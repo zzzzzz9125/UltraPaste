@@ -68,7 +68,7 @@
     <Compile Include="ReaperBlock.cs" />
     <Compile Include="ReaperData.cs" />
     <Compile Include="SrtData.cs" />
-    <Compile Include="UltraPaste.cs">
+    <Compile Include="UltraPasteWindow.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="UltraPasteCommand.cs" />
