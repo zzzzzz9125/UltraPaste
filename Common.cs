@@ -74,7 +74,7 @@ public static class Common
     {
         using (StringWriter sw = new StringWriter())
         {
-            System.Xml.Serialization.XmlSerializer xz = new System.Xml.Serialization.XmlSerializer(data.GetType());
+            XmlSerializer xz = new XmlSerializer(data.GetType());
             xz.Serialize(sw, data);
             return sw.ToString();
         }

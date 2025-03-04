@@ -38,10 +38,7 @@ internal class UltraPasteCommand
         CustomCommand cmdDoPaste = new CustomCommand(CommandCategory.Tools, "UltraPaste_DoPaste") { DisplayName = L.UltraPaste };
         cmdDoPaste.Invoked += delegate (object o, EventArgs e)
         {
-            using (UndoBlock undo = new UndoBlock(L.UltraPaste))
-            {
-                UltraPasteCommon.DoUltraPaste();
-            }
+            UltraPasteCommon.DoPaste();
         };
         cmdParent.AddChild(cmdDoPaste);
         CustomCommands.Add(cmdDoPaste);

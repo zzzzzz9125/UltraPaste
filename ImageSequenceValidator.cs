@@ -18,7 +18,7 @@ public static class ImageSequenceValidator
             sequenceData.Add(meta);
         }
 
-        if (sequenceData.Count == 0 || !IsValidConsistency(sequenceData) || !IsValidNumberSequence(sequenceData))
+        if (sequenceData.Count < 2 || !IsValidConsistency(sequenceData) || !IsValidNumberSequence(sequenceData))
         {
             return null;
         }

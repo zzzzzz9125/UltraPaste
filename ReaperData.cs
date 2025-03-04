@@ -115,7 +115,7 @@ public class ReaperData
                 item.ChanMode = aEvent.Channels == ChannelRemapping.Swap ? 1 : aEvent.Channels == ChannelRemapping.Mono ? 2 : aEvent.Channels == ChannelRemapping.DisableRight || aEvent.Channels == ChannelRemapping.MuteRight ? 3 : aEvent.Channels == ChannelRemapping.DisableLeft || aEvent.Channels == ChannelRemapping.MuteLeft ? 4 : 0;
             }
 
-            ReaperTake currentTake = (ReaperTake)item;
+            ReaperTake currentTake = item;
             foreach (Take tk in ev.Takes)
             {
                 currentTake.Name = tk.Name;
@@ -159,12 +159,12 @@ public class ReaperData
         return data;
     }
 
-    public List<TrackEvent> GenerateEventsToVegas(Vegas vegas, Timecode start, bool closeBegin = true)
+    public List<TrackEvent> GenerateEventsToVegas(Timecode start, bool closeBegin = true)
     {
         List<TrackEvent> l = new List<TrackEvent>();
         if (IsFromTrackData)
         {
-            foreach (Track t in vegas.Project.Tracks)
+            foreach (Track t in UltraPasteCommon.myVegas.Project.Tracks)
             {
                 t.Selected = false;
             }
@@ -211,8 +211,8 @@ public class ReaperData
         {
             if (IsFromTrackData)
             {
-                AudioTrack trk = new AudioTrack(vegas.Project, -1, track.Name);
-                vegas.Project.Tracks.Add(trk);
+                AudioTrack trk = new AudioTrack(UltraPasteCommon.myVegas.Project, -1, track.Name);
+                UltraPasteCommon.myVegas.Project.Tracks.Add(trk);
                 if (track.VolPan != null)
                 {
                     if (track.VolPan.Length > 0)
@@ -307,7 +307,7 @@ public class ReaperData
                     ReaperSourceSection section = item.Source as ReaperSourceSection;
                     bool reverse = section.Mode > 0;
                     Timecode clipStart = Timecode.FromSeconds(section.StartPos), clipLength = section.Mode == 3 ? media.Length : Timecode.FromSeconds(section.Length);
-                    foreach (Media m in vegas.Project.MediaPool)
+                    foreach (Media m in UltraPasteCommon.myVegas.Project.MediaPool)
                     {
                         if (m.IsSubclip())
                         {
@@ -321,7 +321,7 @@ public class ReaperData
                     }
                     if (!media.IsSubclip())
                     {
-                        media = new Subclip(vegas.Project, section.FilePath, clipStart, clipLength, reverse, null);
+                        media = new Subclip(UltraPasteCommon.myVegas.Project, section.FilePath, clipStart, clipLength, reverse, null);
                     }
                 }
 
