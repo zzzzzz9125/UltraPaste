@@ -76,7 +76,7 @@ public static class ImageSequenceValidator
     private static string FindFirstFileName(List<FileMeta> sequence)
     {
         FileMeta minMeta = sequence[0];
-        foreach (var meta in sequence)
+        foreach (FileMeta meta in sequence)
         {
             if (meta.Number < minMeta.Number)
             {

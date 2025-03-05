@@ -6,6 +6,7 @@ using Sony.Vegas;
 
 using System;
 using System.Collections.Generic;
+using System.Windows.Forms;
 
 internal class UltraPasteCommand
 {
@@ -14,7 +15,7 @@ internal class UltraPasteCommand
 
 	internal void UltraPasteInit(Vegas vegas, ref List<CustomCommand> CustomCommands)
 	{
-		myVegas = vegas;
+        myVegas = vegas;
         UltraPasteCommon.myVegas = vegas;
         L.Localize();
         CustomCommand cmdParent = new CustomCommand(CommandCategory.Tools, "UltraPaste") { DisplayName = L.UltraPaste };
@@ -34,14 +35,26 @@ internal class UltraPasteCommand
         cmdWindow.SetIconFile("UltraPaste.png");
         cmdParent.AddChild(cmdWindow);
         CustomCommands.Add(cmdWindow);
-
         CustomCommand cmdDoPaste = new CustomCommand(CommandCategory.Tools, "UltraPaste_DoPaste") { DisplayName = L.UltraPaste };
         cmdDoPaste.Invoked += delegate (object o, EventArgs e)
         {
             UltraPasteCommon.DoPaste();
         };
+        cmdDoPaste.SetIconFile("UltraPaste.png");
         cmdParent.AddChild(cmdDoPaste);
         CustomCommands.Add(cmdDoPaste);
+
+        CustomCommand cmdAddMissingStreams = new CustomCommand(CommandCategory.Tools, "UltraPaste_AddMissingStreams") { DisplayName = "AddMissingStreams" };
+        cmdAddMissingStreams.Invoked += delegate (object o, EventArgs e)
+        {
+            using (UndoBlock undo = new UndoBlock(myVegas.Project, L.UltraPaste))
+            {
+                UltraPasteCommon.AddMissingStreams(UltraPasteCommon.GetSelectedEvents<TrackEvent>());
+            }
+        };
+        cmdAddMissingStreams.SetIconFile("UltraPaste.png");
+        cmdParent.AddChild(cmdAddMissingStreams);
+        CustomCommands.Add(cmdAddMissingStreams);
 
 #if TEST
         CustomCommand cmdTest = new CustomCommand(CommandCategory.Tools, "UltraPaste_Test");

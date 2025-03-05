@@ -1,7 +1,9 @@
 #if !Sony
 using ScriptPortal.Vegas;
+using Region = ScriptPortal.Vegas.Region;
 #else
 using Sony.Vegas;
+using Region = Sony.Vegas.Region;
 #endif
 
 using System;
@@ -11,10 +13,13 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Runtime.InteropServices.ComTypes;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 
 public static class UltraPasteCommon
 {
-    //public static UltraPasteSettings Settings = UltraPasteSettings.LoadFromFile();
+    public static UltraPasteSettings Settings = UltraPasteSettings.LoadFromFile();
     public const string VERSION = "v1.00";
 
     public static Vegas myVegas;
@@ -26,7 +31,7 @@ public static class UltraPasteCommon
 
     public static void DoPaste()
     {
-        string projectFileToOpen = null;
+        string projectFileToOpen = null, scriptFileToRun = null;
         using (UndoBlock undo = new UndoBlock(myVegas.Project, L.UltraPaste))
         {
             plugInTitlesAndText = myVegas.Generators.FindChildByUniqueID(UID_TITLES_AND_TEXT)
@@ -45,13 +50,22 @@ public static class UltraPasteCommon
 
             if (Clipboard.ContainsImage())
             {
-                Image img = Clipboard.GetImage();
                 string path = LastImageAndPath.Value;
+                string fileName = Path.Combine(baseFolder, string.Format("Clipboard_{0}.png", DateTime.Now.ToString("yyyyMMdd-HHmmss"))); ;
+                Image img = Clipboard.GetImage();
+                if (img == null && Clipboard.ContainsData(DataFormats.Dib))
+                {
+                    using (MemoryStream ms = Clipboard.GetData(DataFormats.Dib) as MemoryStream)
+                    {
+                        img = DibImageData.ConvertToBitmap(ms.ToArray());
+                    }
+                }
                 if (baseFolder != Path.GetDirectoryName(path) || !img.IsSameTo(LastImageAndPath.Key))
                 {
-                    path = Path.Combine(baseFolder, string.Format("Clipboard_{0}.png", DateTime.Now.ToString("yyyyMMdd-HHmmss")));
-                    img.Save(path);
+                    path = fileName;
+                    img.Save(path, ImageFormat.Png);
                 }
+                LastImageAndPath.Key?.Dispose();
                 LastImageAndPath = new KeyValuePair<Image, string>(img, path);
                 evs.AddRange(GenerateEvents<VideoEvent>(path, start, length, true));
             }
@@ -73,7 +87,7 @@ public static class UltraPasteCommon
             }
             else if (Clipboard.ContainsFileDropList())
             {
-                List<string> filePaths = GetFilePathsFromPathList(Clipboard.GetFileDropList(), out string uniformExtension);
+                List<string> filePaths = Common.GetFilePathsFromPathList(Clipboard.GetFileDropList(), out string uniformExtension);
                 List<string> paths = new List<string>();
                 Timecode startTime = start;
 
@@ -98,14 +112,14 @@ public static class UltraPasteCommon
                 }
                 foreach (string path in filePaths)
                 {
-                    if (IsPathMatch(path, "*.veg.bak;*.sfvp0;*.sfap0;*.sfk;*.sfl;*.rpp-bak;*.reapeaks") || !File.Exists(path))
+                    if (Common.IsPathMatch(path, "*.veg.bak;*.sfvp0;*.sfap0;*.sfk;*.sfl;*.rpp-bak;*.reapeaks") || !File.Exists(path))
                     {
                         continue;
                     }
                     List<TrackEvent> addedEvents = null;
                     if (Path.GetExtension(path).ToLower() == ".veg")
                     {
-                        // Opening the project file in UndoBlock causes an error, so we have to jump out of UndoBlock...
+                        // Opening the project file in UndoBlock causes an UndoBlock error, so we have to jump out of UndoBlock...
                         projectFileToOpen = path;
                         break;
                     }
@@ -119,6 +133,12 @@ public static class UltraPasteCommon
                         SrtData srt = SrtData.Parser.Parse(path);
                         addedEvents = srt.GenerateEventsToVegas(startTime);
                         srt.GenerateRegionsToVegas(startTime);
+                    }
+                    else if (Path.GetExtension(path).ToLower() == ".cs" || Path.GetExtension(path).ToLower() == ".js" || Path.GetExtension(path).ToLower() == ".vb" || Path.GetExtension(path).ToLower() == ".dll")
+                    {
+                        // Running the script file in UndoBlock causes an UndoBlock error, so we have to jump out of UndoBlock...
+                        scriptFileToRun = path;
+                        break;
                     }
                     else
                     {
@@ -229,7 +249,6 @@ public static class UltraPasteCommon
                 {
                     ev.Selected = false;
                 }
-
                 foreach (TrackEvent ev in evs)
                 {
                     ev.Selected = true;
@@ -242,167 +261,10 @@ public static class UltraPasteCommon
         {
             myVegas.OpenFile(projectFileToOpen);
         }
-    }
-    public static bool IsSameTo(this Image img1, Image img2)
-    {
-        if (img2 == null || img1.RawFormat.Guid != img2.RawFormat.Guid || img1.Size != img2.Size)
+        else if (scriptFileToRun != null)
         {
-            return false;
+            myVegas.RunScriptFile(scriptFileToRun);
         }
-        using (MemoryStream ms1 = new MemoryStream(), ms2 = new MemoryStream())
-        {
-            img1.Save(ms1, System.Drawing.Imaging.ImageFormat.Png);
-            img2.Save(ms2, System.Drawing.Imaging.ImageFormat.Png);
-            return ms1.IsSameTo(ms2);
-        }
-    }
-
-    public static bool IsSameTo(this Stream stream1, Stream stream2)
-    {
-        if (stream1.GetType() != stream2.GetType() || stream1.Length != stream2.Length)
-        {
-            return false;
-        }
-        byte[] bytes1, bytes2;
-        MemoryStream ms1 = stream1 as MemoryStream, ms2 = stream2 as MemoryStream;
-        if (ms1 != null && ms2 != null)
-        {
-            bytes1 = ms1.ToArray();
-            bytes2 = ms2.ToArray();
-        }
-        else
-        {
-            bytes1 = new byte[stream1.Length];
-            stream1.Seek(0, SeekOrigin.Begin);
-            stream1.Read(bytes1, 0, bytes1.Length);
-            stream1.Seek(0, SeekOrigin.Begin);
-            bytes2 = new byte[stream2.Length];
-            stream2.Seek(0, SeekOrigin.Begin);
-            stream2.Read(bytes2, 0, bytes2.Length);
-            stream2.Seek(0, SeekOrigin.Begin);
-        }
-        return Convert.ToBase64String(bytes1) == Convert.ToBase64String(bytes2);
-    }
-
-    public static bool IsPathMatch(string path, string dosExpression)
-    {
-        if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(dosExpression))
-        {
-            return false;
-        }
-
-        string fileName = Path.GetFileName(path);
-        if (string.IsNullOrEmpty(fileName))
-        {
-            return false;
-        }
-
-        List<string> validPatterns = new List<string>();
-        foreach (string rawPattern in dosExpression.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
-        {
-            string trimmedPattern = rawPattern.Trim();
-            if (!string.IsNullOrEmpty(trimmedPattern))
-            {
-                validPatterns.Add(trimmedPattern);
-            }
-        }
-
-        foreach (string pattern in validPatterns)
-        {
-            string regexPattern = string.Format("^{0}$", Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", "."));
-            if (Regex.IsMatch(fileName, regexPattern, RegexOptions.IgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    public static string GetShortCutTarget(string lnk)
-    {
-        if (lnk != null && File.Exists(lnk))
-        {
-            dynamic objWshShell = null, objShortcut = null;
-            try
-            {
-                objWshShell = Activator.CreateInstance(Type.GetTypeFromCLSID(new Guid("72C24DD5-D70A-438B-8A42-98424B88AFB8")));
-                objShortcut = objWshShell.CreateShortcut(lnk);
-                Console.WriteLine(objShortcut.TargetPath);
-                return objShortcut.TargetPath;
-            }
-            finally
-            {
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(objShortcut);
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(objWshShell);
-            }
-        }
-        return string.Empty;
-    }
-
-    // get all valid paths
-    public static List<string> GetFilePathsFromPathList(System.Collections.Specialized.StringCollection pathList)
-    {
-        return GetFilePathsFromPathList(pathList, out _);
-    }
-
-    // get all valid paths, and output the extension when all files have a uniform extension
-    public static List<string> GetFilePathsFromPathList(System.Collections.Specialized.StringCollection pathList, out string uniformExtension)
-    {
-        List<string> filePaths = new List<string>();
-        foreach (string path in pathList)
-        {
-            string filePath = path;
-            if (Path.GetExtension(filePath).ToLower() == ".lnk")
-            {
-                filePath = GetShortCutTarget(filePath);
-            } 
-            if (File.Exists(filePath))
-            {
-                filePaths.Add(filePath);
-            }
-            else if (Directory.Exists(filePath))
-            {
-                foreach (string child in Directory.GetFiles(filePath, "*.*", SearchOption.AllDirectories))
-                {
-                    filePaths.Add(child);
-                }
-            }
-        }
-        uniformExtension = null;
-        if (filePaths.Count > 0)
-        {
-            uniformExtension = Path.GetExtension(filePaths[0]).ToLower();
-            foreach (string path in filePaths)
-            {
-                if (Path.GetExtension(path).ToLower() != uniformExtension)
-                {
-                    uniformExtension = null;
-                    break;
-                }
-            }
-        }
-        return filePaths;
-    }
-
-    public static List<string> GetFilePathsFromPathList<T>(T pathList) where T : IEnumerable<string>
-    {
-        List<string> filePaths = new List<string>();
-        foreach (string path in pathList)
-        {
-            if (File.Exists(path))
-            {
-                filePaths.Add(path);
-            }
-            else if (Directory.Exists(path))
-            {
-                foreach (string child in Directory.GetFiles(path, "*.*", SearchOption.AllDirectories))
-                {
-                    filePaths.Add(child);
-                }
-            }
-        }
-        return filePaths;
     }
 
     public static List<VideoEvent> GenerateTitlesAndTextEvents(Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
@@ -422,6 +284,21 @@ public static class UltraPasteCommon
         }
 
         return GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
+    }
+
+    public static Timecode GetEndTimeFromMarkers<T>(IEnumerable<T> markers) where T : Marker
+    {
+        Timecode end = new Timecode(0);
+        foreach (T m in markers)
+        {
+            Region r = m as Region;
+            Timecode t = r != null ? r.End : m.Position;
+            if (end < t)
+            {
+                end = t;
+            }
+        }
+        return end;
     }
 
     public static Timecode GetEndTimeFromEvents<T>(IEnumerable<T> evs) where T : TrackEvent
@@ -615,6 +492,93 @@ public static class UltraPasteCommon
                     l.Add((T)(TrackEvent)eventAudio);
                     audioVideoPair.Add((AudioTrack)trackBelow, (VideoTrack)myTrack);
                 }
+            }
+        }
+        return l;
+    }
+
+    public static List<T> AddMissingStreams<T>(IEnumerable<T> evs) where T : TrackEvent
+    {
+        List<T> l = new List<T>();
+        foreach (TrackEvent ev in evs)
+        {
+            if (ev.Takes.Count == 0)
+            {
+                continue;
+            }
+
+            List<MediaStream> streams = new List<MediaStream>();
+            streams.AddRange(ev.ActiveTake.Media.Streams);
+            streams.Remove(ev.ActiveTake.MediaStream);
+            TrackEventGroup group = null;
+            List<Track> usedTrack = new List<Track>();
+            if (ev.IsGrouped && ev.Group != null)
+            {
+                group = ev.Group;
+                foreach (TrackEvent gev in group)
+                {
+                    if (gev.Takes.Count == 0)
+                    {
+                        continue;
+                    }
+                    streams.Remove(gev.ActiveTake.MediaStream);
+                    usedTrack.Add(gev.Track);
+                }
+            }
+            else
+            {
+                group = new TrackEventGroup(myVegas.Project);
+                myVegas.Project.Groups.Add(group);
+                group.Add(ev);
+            }
+
+            streams.Sort((a, b) => { return Math.Abs(a.Index - ev.ActiveTake.MediaStream.Index) - Math.Abs(b.Index - ev.ActiveTake.MediaStream.Index); });
+
+            foreach (MediaStream stream in streams)
+            {
+                Track track = null;
+                int indexOffset = stream.Index - ev.ActiveTake.MediaStream.Index;
+                if (indexOffset == 0)
+                {
+                    continue;
+                }
+
+                int trackIndex = ev.Track.Index + (indexOffset > 0 ? 1 : -1);
+                while (trackIndex > -1 && trackIndex < myVegas.Project.Tracks.Count)
+                {
+                    Track trk = myVegas.Project.Tracks[trackIndex];
+                    if (usedTrack.Contains(trk))
+                    {
+                        trackIndex += indexOffset > 0 ? 1 : -1;
+                    }
+                    else
+                    {
+                        if (trk.MediaType == stream.MediaType)
+                        {
+                            track = trk;
+                        }
+                        else if (indexOffset < 0)
+                        {
+                            trackIndex += 1;
+                        }
+                        break;
+                    }
+                }
+
+                if (track == null)
+                {
+                    track = stream.MediaType == MediaType.Video ? (Track)new VideoTrack(myVegas.Project, trackIndex, null) : new AudioTrack(myVegas.Project, trackIndex, null);
+                    myVegas.Project.Tracks.Add(track);
+                }
+
+                TrackEvent nev = stream.MediaType == MediaType.Video ? (TrackEvent)new VideoEvent(myVegas.Project, ev.Start, ev.Length, null) : new AudioEvent(myVegas.Project, ev.Start, ev.Length, null);
+                track.Events.Add(nev);
+                nev.AddTake(stream);
+                nev.PlaybackRate = ev.PlaybackRate;
+                nev.ActiveTake.Offset = ev.ActiveTake.Offset;
+                group.Add(nev);
+                usedTrack.Add(nev.Track);
+                l.Add((T)nev);
             }
         }
         return l;

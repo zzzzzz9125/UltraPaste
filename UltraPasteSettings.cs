@@ -25,7 +25,7 @@ public class UltraPasteSettings
 
         using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
         {
-            byte[] buffer = System.Text.Encoding.Default.GetBytes(Common.SerializeXml(this));
+            byte[] buffer = System.Text.Encoding.Default.GetBytes(this.SerializeXml());
             fileStream.Write(buffer, 0, buffer.Length);
         }
     }

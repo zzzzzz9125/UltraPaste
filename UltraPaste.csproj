@@ -63,6 +63,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common.cs" />
+    <Compile Include="DibImageData.cs" />
     <Compile Include="ImageSequenceValidator.cs" />
     <Compile Include="L.cs" />
     <Compile Include="ReaperBlock.cs" />

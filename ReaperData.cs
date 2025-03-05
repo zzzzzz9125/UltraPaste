@@ -549,7 +549,7 @@ public class ReaperData
                             {
                                 continue;
                             }
-                            MediaStream ms = ev is VideoEvent && m.HasVideo() ? (MediaStream)m.GetVideoStreamByIndex(0) : (MediaStream)m.GetAudioStreamByIndex(0);
+                            MediaStream ms = ev is VideoEvent && m.HasVideo() ? (MediaStream)m.GetVideoStreamByIndex(0) : m.GetAudioStreamByIndex(0);
                             Take tk = ev.AddTake(ms, false);
                             tk.Offset = Timecode.FromSeconds(t.SOffs);
                             if (t.Selected)
@@ -1263,7 +1263,7 @@ public class ReaperData
             {
                 Array array = value as Array;
                 List<string> elements = new List<string>();
-                foreach (var item in array)
+                foreach (object item in array)
                 {
                     elements.Add(Convert.ToString(item, CultureInfo.InvariantCulture));
                 }

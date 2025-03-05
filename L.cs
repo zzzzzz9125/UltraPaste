@@ -1,3 +1,5 @@
+using System.Windows.Forms;
+
 public static class L
 {
     public static string Font, UltraPaste, UltraPasteWindow;
@@ -5,12 +7,12 @@ public static class L
     // Some text localization.
     public static void Localize()
     {
-        string language = /*UltraPasteCommon.Settings?.CurrentLanguage ??*/ System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+        string language = UltraPasteCommon.Settings?.CurrentLanguage ?? System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
         switch (language)
         {
             case "zh":
                 Font = "Microsoft Yahei UI";
-                UltraPaste = "³¬¼¶Õ³Ìù!"; UltraPasteWindow = "³¬¼¶Õ³Ìù! - ´°¿Ú";
+                UltraPaste = "³¬¼¶Õ³Ìù£¡"; UltraPasteWindow = "³¬¼¶Õ³Ìù£¡- ´°¿Ú";
                 break;
 
             default:
