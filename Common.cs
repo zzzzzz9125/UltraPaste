@@ -27,8 +27,6 @@ public static class S
 public static class Common
 {
     public static int VegasVersion = FileVersionInfo.GetVersionInfo(Application.ExecutablePath).FileMajorPart;
-    public static string AppFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-    public static string SettingsFolder = Path.Combine(VegasVersion < 14 ? Path.Combine(AppFolder, "Sony") : AppFolder, "VEGAS Pro", VegasVersion + ".0");
 
     [DllImport("shell32.dll", ExactSpelling = true)]
     private static extern void ILFree(IntPtr pidlList);
@@ -62,7 +60,6 @@ public static class Common
             }
         }
     }
-
 
     public static bool IsPathMatch(string path, string dosExpression)
     {
@@ -120,14 +117,8 @@ public static class Common
         return string.Empty;
     }
 
-    // get all valid paths
-    public static List<string> GetFilePathsFromPathList(System.Collections.Specialized.StringCollection pathList)
-    {
-        return GetFilePathsFromPathList(pathList, out _);
-    }
-
     // get all valid paths, and output the extension when all files have a uniform extension
-    public static List<string> GetFilePathsFromPathList(System.Collections.Specialized.StringCollection pathList, out string uniformExtension)
+    public static List<string> GetFilePathsFromPathList(this System.Collections.Specialized.StringCollection pathList, out string uniformExtension)
     {
         List<string> filePaths = new List<string>();
         foreach (string path in pathList)
@@ -212,15 +203,19 @@ public static class Common
 
     public static string SerializeXml(this object data)
     {
-        using (StringWriter sw = new StringWriter())
+        using (MemoryStream ms = new MemoryStream())
         {
-            XmlSerializer xz = new XmlSerializer(data.GetType());
-            xz.Serialize(sw, data);
-            return sw.ToString();
+            using (StreamWriter textWriter = new StreamWriter(ms, new UTF8Encoding()))
+            {
+                XmlSerializer serializer = new XmlSerializer(data.GetType());
+                serializer.Serialize(textWriter, data);
+
+                return Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
+            }
         }
     }
 
-    public static T DeserializeXml<T>(string path) where T : new()
+    public static T DeserializeXml<T>(this string path) where T : new()
     {
         T t = default;
         if (!File.Exists(path))
@@ -233,5 +228,131 @@ public static class Common
             t = (T)new XmlSerializer(typeof(T)).Deserialize(sr);
         }
         return t;
+    }
+
+    public static List<T> GetSelectedTracks<T>(this Project project, int maxCount = 0) where T : Track
+    {
+        List<T> l = new List<T>();
+        foreach (Track myTrack in project.Tracks)
+        {
+            if (myTrack.Selected)
+            {
+                if ((typeof(T) == typeof(VideoTrack) && !myTrack.IsVideo()) || (typeof(T) == typeof(AudioTrack) && !myTrack.IsAudio()))
+                {
+                    continue;
+                }
+                l.Add((T)myTrack);
+            }
+        }
+        if (maxCount > 0 && maxCount < l.Count)
+        {
+            l = l.GetRange(0, maxCount);
+        }
+        return l;
+    }
+
+    public static List<T> GetSelectedEvents<T>(this Project project, int maxCount = 0) where T : TrackEvent
+    {
+        List<T> l = new List<T>();
+        foreach (Track myTrack in project.Tracks)
+        {
+            if ((typeof(T) == typeof(VideoEvent) && !myTrack.IsVideo()) || (typeof(T) == typeof(AudioEvent) && !myTrack.IsAudio()))
+            {
+                continue;
+            }
+            foreach (TrackEvent ev in myTrack.Events)
+            {
+                if (ev.Selected)
+                {
+                    l.Add((T)ev);
+                }
+            }
+        }
+        if (maxCount > 0 && maxCount < l.Count)
+        {
+            l = l.GetRange(0, maxCount);
+        }
+        return l;
+    }
+
+
+    public static Timecode GetEndTimeFromMarkers<T>(this IEnumerable<T> markers) where T : Marker
+    {
+        Timecode end = new Timecode(0);
+        foreach (T m in markers)
+        {
+            Region r = m as Region;
+            Timecode t = r != null ? r.End : m.Position;
+            if (end < t)
+            {
+                end = t;
+            }
+        }
+        return end;
+    }
+
+    public static Timecode GetEndTimeFromEvents<T>(this IEnumerable<T> evs) where T : TrackEvent
+    {
+        Timecode end = new Timecode(0);
+        foreach (T ev in evs)
+        {
+            if (end < ev.End)
+            {
+                end = ev.End;
+            }
+        }
+        return end;
+    }
+
+    public static List<Media> GetValidMedia(this Vegas vegas, IEnumerable<string> paths)
+    {
+        List<Media> mediaList = new List<Media>();
+        foreach (string path in paths)
+        {
+            Media media;
+            if ((media = vegas.GetValidMedia(path)) != null)
+            {
+                mediaList.Add(media);
+            }
+        }
+        return mediaList;
+    }
+
+    public static Media GetValidMedia(this Vegas vegas, string path)
+    {
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+        try
+        {
+            System.Reflection.MethodInfo method;
+            if ((method = typeof(Vegas).GetMethod("MediaInfo", new Type[] { typeof(string) })) != null)
+            {
+                // VEGAS Pro 18+
+                method.Invoke(vegas, new object[] { path });
+            }
+            else if ((method = typeof(Vegas).GetMethod("ImportFile", new Type[] { typeof(string), typeof(bool), typeof(bool) })) != null)
+            {
+                // VEGAS Pro 22 Build 122+ (not recommended, for compatibility only)
+                method.Invoke(vegas, new object[] { path, true, false });
+            }
+            else if ((method = typeof(Vegas).GetMethod("ImportFile", new Type[] { typeof(string), typeof(bool) })) != null)
+            {
+                // VEGAS Pro 22 Build 93-
+                method.Invoke(vegas, new object[] { path, true });
+            }
+            Media media = Media.CreateInstance(vegas.Project, path);
+            return media;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public static System.Drawing.Color ConvertToColor(this OFXColor ofxColor)
+    {
+        return System.Drawing.Color.FromArgb((int)(ofxColor.A * 255), (int)(ofxColor.R * 255), (int)(ofxColor.G * 255), (int)(ofxColor.B * 255));
     }
 }

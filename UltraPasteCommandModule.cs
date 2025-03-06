@@ -7,21 +7,24 @@ using Sony.Vegas;
 using System.Collections;
 using System.Collections.Generic;
 
-public class UltraPasteCommandModule : ICustomCommandModule
+namespace UltraPaste
 {
-	private Vegas myVegas;
-
-	public void InitializeModule(Vegas vegas)
+	public class UltraPasteCommandModule : ICustomCommandModule
 	{
-		myVegas = vegas;
-	}
+		private Vegas myVegas;
 
-	public ICollection GetCustomCommands()
-	{
-		List<CustomCommand> customCommands = new List<CustomCommand>();
+		public void InitializeModule(Vegas vegas)
+		{
+			myVegas = vegas;
+		}
 
-		new UltraPasteCommand().UltraPasteInit(myVegas, ref customCommands);
+		public ICollection GetCustomCommands()
+		{
+			List<CustomCommand> customCommands = new List<CustomCommand>();
 
-		return customCommands;
+			new UltraPasteCommand().UltraPasteInit(myVegas, ref customCommands);
+
+			return customCommands;
+		}
 	}
 }

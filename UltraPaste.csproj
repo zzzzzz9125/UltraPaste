@@ -40,10 +40,16 @@
     </ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CorePrimitives">
+      <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\CorePrimitives.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="ScriptPortal.MediaSoftware.Skins, Version=21.0.0.208, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\ScriptPortal.MediaSoftware.Skins.dll</HintPath>
+    </Reference>
+    <Reference Include="ScriptPortal.MediaSoftware.TextGen.CoreGraphics">
+      <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\ScriptPortal.MediaSoftware.TextGen.CoreGraphics.dll</HintPath>
     </Reference>
     <Reference Include="ScriptPortal.Vegas, Version=21.0.0.208, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -52,6 +58,9 @@
     <Reference Include="Sony.MediaSoftware.Skins, Version=13.0.0.453, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files\Sony\Vegas Pro 13.0\Sony.MediaSoftware.Skins.dll</HintPath>
+    </Reference>
+    <Reference Include="Sony.MediaSoftware.TextGen.CoreGraphics">
+      <HintPath>C:\Program Files\Sony\Vegas Pro 13.0\Sony.MediaSoftware.TextGen.CoreGraphics.dll</HintPath>
     </Reference>
     <Reference Include="Sony.Vegas">
       <HintPath>C:\Program Files\Sony\Vegas Pro 13.0\Sony.Vegas.dll</HintPath>
@@ -64,11 +73,14 @@
   <ItemGroup>
     <Compile Include="Common.cs" />
     <Compile Include="DibImageData.cs" />
+    <Compile Include="DxtPresetModifier.cs" />
     <Compile Include="ImageSequenceValidator.cs" />
     <Compile Include="L.cs" />
     <Compile Include="ReaperBlock.cs" />
     <Compile Include="ReaperData.cs" />
-    <Compile Include="SrtData.cs" />
+    <Compile Include="SubtitlesData.cs" />
+    <Compile Include="TextMediaGenerator.cs" />
+    <Compile Include="TrackEventGenerator.cs" />
     <Compile Include="UltraPasteWindow.cs">
       <SubType>UserControl</SubType>
     </Compile>
