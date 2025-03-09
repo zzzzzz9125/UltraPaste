@@ -7,7 +7,7 @@ namespace UltraPaste
         // Some text localization.
         public static void Localize()
         {
-            string language = UltraPasteCommon.Settings?.CurrentLanguage ?? System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+            string language = UltraPasteCommon.Settings?.General.CurrentLanguage ?? System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
             switch (language)
             {
                 case "zh":

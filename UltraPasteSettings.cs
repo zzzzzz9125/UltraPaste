@@ -4,10 +4,26 @@ namespace UltraPaste
 {
     public class UltraPasteSettings
     {
-        public string CurrentLanguage { get; set; }
+        public GeneralSettings General { get; set; }
+
         public UltraPasteSettings()
         {
-            CurrentLanguage = System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+            General = new GeneralSettings();
+        }
+
+        public class GeneralSettings
+        {
+            public string CurrentLanguage = System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+        }
+
+        public class BaseImportSettings
+        {
+            public int AddType = 0;           // Across Time / Across Tracks / As Takes
+            public int StreamType = 0;        // All / Video only / Audio Only
+            public int StartPositionType = 0; // Cursor / Play Cursor / Project Start
+            public int EventLengthType = 0;   // Media itself / Loop / Average of Loop (Across Time only)
+            public int RepeatTimes = 0;       // Number of times to repeat
+            public bool CursorToEnd = false;  // Put Cursor to Event End after Pasting
         }
 
         public static UltraPasteSettings LoadFromFile(string filePath = null)

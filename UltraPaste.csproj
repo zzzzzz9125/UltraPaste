@@ -75,6 +75,7 @@
     <Compile Include="DibImageData.cs" />
     <Compile Include="DxtPresetModifier.cs" />
     <Compile Include="ImageSequenceValidator.cs" />
+    <Compile Include="VirtualKeyboard.cs" />
     <Compile Include="L.cs" />
     <Compile Include="ReaperBlock.cs" />
     <Compile Include="ReaperData.cs" />

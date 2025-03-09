@@ -13,6 +13,8 @@ using System.Xml.Serialization;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
+using System.ComponentModel;
+using static System.Windows.Forms.DataFormats;
 
 #if TEST
 public static class S
@@ -60,6 +62,90 @@ public static class Common
             }
         }
     }
+
+    [DllImport("user32.dll", EntryPoint = "keybd_event", SetLastError = true)]
+    public static extern void keybd_event(Keys bVk, byte bScan, uint dwFlags, uint dwExtraInfo);
+
+    public static void DoKey(this Keys bVk, uint dwFlags)
+    {
+        keybd_event(bVk, 0, dwFlags, 0);
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    private enum InputType : uint
+    {
+        INPUT_KEYBOARD = 1
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct INPUT
+    {
+        public InputType type;
+        public KEYBDINPUT ki;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KEYBDINPUT
+    {
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    private const ushort VK_MENU = 0x12;     // Alt键
+    private const ushort VK_E = 0x45;
+    private const ushort VK_S = 0x53;
+    private const ushort VK_DOWN = 0x28;     // 方向键↓
+    private const ushort VK_RETURN = 0x0D;   // Enter键
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+
+    public static void SendComplexShortcut()
+    {
+        // 总事件数 = (Alt+E的4个事件) + (S的2个) + (↓×2的4个) + (Enter的2个) = 12
+        INPUT[] inputs = new INPUT[4];
+        int index = 0;
+        int inputSize = Marshal.SizeOf(typeof(INPUT));
+
+        MessageBox.Show("1");
+
+        // 1. Alt+E 组合键
+        inputs[index++] = CreateKeyboardInput(VK_MENU, 0);       // Alt按下
+        inputs[index++] = CreateKeyboardInput(VK_E, 0);           // E按下
+        inputs[index++] = CreateKeyboardInput(VK_E, KEYEVENTF_KEYUP);  // E释放
+        inputs[index++] = CreateKeyboardInput(VK_MENU, KEYEVENTF_KEYUP); // Alt释放
+
+        MessageBox.Show("2");
+
+        // 发送所有输入事件
+        uint successCount = SendInput((uint)inputs.Length, inputs, inputSize);
+        MessageBox.Show(successCount.ToString());
+        if (successCount != inputs.Length)
+        {
+            MessageBox.Show("4");
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
+    }
+
+    private static INPUT CreateKeyboardInput(ushort keyCode, uint flags)
+    {
+        return new INPUT
+        {
+            type = InputType.INPUT_KEYBOARD,
+            ki = new KEYBDINPUT
+            {
+                wVk = keyCode,
+                wScan = 0,
+                dwFlags = flags,
+                time = 0,
+                dwExtraInfo = IntPtr.Zero
+            }
+        };
+    }
+
 
     public static bool IsPathMatch(string path, string dosExpression)
     {
@@ -228,6 +314,136 @@ public static class Common
             t = (T)new XmlSerializer(typeof(T)).Deserialize(sr);
         }
         return t;
+    }
+
+    // get a mix of modern VEGAS data and Sony one, allowing users to paste between the two
+    public static void UnifyVegasClipboardData()
+    {
+        string vegasDataStr = "Vegas Data 5.0", sonyVegasDataStr = "Sony Vegas Data 5.0", vegasMetaDataStr = "Vegas Meta-Data 5.0", sonyVegasMetaDataStr = "Sony Vegas Meta-Data 5.0";
+
+        if (!Clipboard.ContainsData(vegasDataStr) && !Clipboard.ContainsData(sonyVegasDataStr) && !Clipboard.ContainsData(vegasMetaDataStr) && !Clipboard.ContainsData(sonyVegasMetaDataStr))
+        {
+            return;
+        }
+
+        IDataObject oldData = Clipboard.GetDataObject();
+        DataObject newData = new DataObject();
+
+
+        Dictionary<string, object> dic = new Dictionary<string, object>
+        {
+            { vegasDataStr, null }, { sonyVegasDataStr, null }, { vegasMetaDataStr, null }, { sonyVegasMetaDataStr, null }
+        };
+
+        if (oldData != null)
+        {
+            foreach (string existingFormat in oldData.GetFormats())
+            {
+                object obj = oldData.GetData(existingFormat);
+                if (dic.ContainsKey(existingFormat))
+                {
+                    dic[existingFormat] = obj;
+                }
+                else
+                {
+                    newData.SetData(existingFormat, obj);
+                }
+            }
+        }
+
+        if (dic[vegasDataStr] != null || dic[sonyVegasDataStr] != null)
+        {
+            dic[vegasDataStr] = dic[vegasDataStr] ?? dic[sonyVegasDataStr];
+            dic[sonyVegasDataStr] = dic[sonyVegasDataStr] ?? dic[vegasDataStr];
+
+            // trying to convert the new VideoFX GUIDs to the old Sony ones, but failed...
+
+            /*if (dic[sonyVegasDataStr] is MemoryStream ms)
+            {
+                byte[] magixBytes = new byte[] { 0x76, 0x00, 0x65, 0x00, 0x67, 0x00, 0x61, 0x00, 0x73, 0x00,   // v e g a s 
+                                                             0x63, 0x00, 0x72, 0x00, 0x65, 0x00, 0x61, 0x00,   //   c r e a 
+                                                             0x74, 0x00, 0x69, 0x00, 0x76, 0x00, 0x65, 0x00,   //   t i v e 
+                                                             0x73, 0x00, 0x6F, 0x00, 0x66, 0x00, 0x74, 0x00,   //   s o f t 
+                                                             0x77, 0x00, 0x61, 0x00, 0x72, 0x00, 0x65, 0x00 }; //   w a r e 
+
+                byte[] sonyBytes = new byte[] {              0x73, 0x00, 0x6F, 0x00, 0x6E, 0x00, 0x79, 0x00,   //   s o n y 
+                                                             0x63, 0x00, 0x72, 0x00, 0x65, 0x00, 0x61, 0x00,   //   c r e a 
+                                                             0x74, 0x00, 0x69, 0x00, 0x76, 0x00, 0x65, 0x00,   //   t i v e 
+                                                             0x73, 0x00, 0x6F, 0x00, 0x66, 0x00, 0x74, 0x00,   //   s o f t 
+                                                             0x77, 0x00, 0x61, 0x00, 0x72, 0x00, 0x65, 0x00 }; //   w a r e 
+                byte[] oldBytes = ms.ToArray();
+                byte[] sonyVegasBytes = ReplaceBytes(oldBytes, magixBytes, sonyBytes);
+                MemoryStream ms2 = new MemoryStream();
+                ms2.Write(sonyVegasBytes, 0, sonyVegasBytes.Length);
+                dic[sonyVegasDataStr] = ms2;
+                dic[vegasDataStr] = ms2;
+            }*/
+
+            newData.SetData(vegasDataStr, dic[vegasDataStr]);
+            newData.SetData(sonyVegasDataStr, dic[sonyVegasDataStr]);
+        }
+
+        if (dic[vegasMetaDataStr] != null || dic[sonyVegasMetaDataStr] != null)
+        {
+            dic[vegasMetaDataStr] = dic[vegasMetaDataStr] ?? dic[sonyVegasMetaDataStr];
+            dic[sonyVegasMetaDataStr] = dic[sonyVegasMetaDataStr] ?? dic[vegasMetaDataStr];
+            newData.SetData(vegasMetaDataStr, dic[vegasMetaDataStr]);
+            newData.SetData(sonyVegasMetaDataStr, dic[sonyVegasMetaDataStr]);
+        }
+
+        Clipboard.SetDataObject(newData, true);
+    }
+
+    public static byte[] ReplaceBytes(byte[] bytes1, byte[] bytes2, byte[] bytes3)
+    {
+        if (bytes2 == null || bytes2.Length == 0)
+            return bytes1;
+
+        List<int> occurrences = new List<int>();
+        int current = 0;
+        int patternLength = bytes2.Length;
+        int maxIndex = bytes1.Length - patternLength;
+
+        while (current <= maxIndex)
+        {
+            bool match = true;
+            for (int i = 0; i < patternLength; i++)
+            {
+                if (bytes1[current + i] != bytes2[i])
+                {
+                    match = false;
+                    break;
+                }
+            }
+            if (match)
+            {
+                occurrences.Add(current);
+                current += patternLength;
+            }
+            else
+            {
+                current++;
+            }
+        }
+
+        using (MemoryStream ms = new MemoryStream())
+        {
+            int previous = 0;
+            foreach (int index in occurrences)
+            {
+                if (index > previous)
+                {
+                    ms.Write(bytes1, previous, index - previous);
+                }
+                ms.Write(bytes3, 0, bytes3.Length);
+                previous = index + patternLength;
+            }
+            if (previous < bytes1.Length)
+            {
+                ms.Write(bytes1, previous, bytes1.Length - previous);
+            }
+            return ms.ToArray();
+        }
     }
 
     public static List<T> GetSelectedTracks<T>(this Project project, int maxCount = 0) where T : Track

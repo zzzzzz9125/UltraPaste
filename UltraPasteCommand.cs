@@ -36,7 +36,7 @@ namespace UltraPaste
             cmdWindow.SetIconFile("UltraPaste.png");
             cmdParent.AddChild(cmdWindow);
             CustomCommands.Add(cmdWindow);
-            CustomCommand cmdDoPaste = new CustomCommand(CommandCategory.Tools, "UltraPaste_DoPaste") { DisplayName = L.UltraPaste };
+            CustomCommand cmdDoPaste = new CustomCommand(CommandCategory.Tools, "UltraPaste_0_DoPaste") { DisplayName = L.UltraPaste };
             cmdDoPaste.Invoked += delegate (object o, EventArgs e)
             {
                 UltraPasteCommon.DoPaste();
@@ -56,6 +56,15 @@ namespace UltraPaste
             cmdAddMissingStreams.SetIconFile("UltraPaste.png");
             cmdParent.AddChild(cmdAddMissingStreams);
             CustomCommands.Add(cmdAddMissingStreams);
+
+            CustomCommand cmdUnifyVegasClipboardData = new CustomCommand(CommandCategory.Tools, "UltraPaste_UnifyVegasClipboardData") { DisplayName = "UnifyVegasClipboardData" };
+            cmdUnifyVegasClipboardData.Invoked += delegate (object o, EventArgs e)
+            {
+                Common.UnifyVegasClipboardData();
+            };
+            cmdUnifyVegasClipboardData.SetIconFile("UltraPaste.png");
+            cmdParent.AddChild(cmdUnifyVegasClipboardData);
+            CustomCommands.Add(cmdUnifyVegasClipboardData);
 
 #if TEST
             CustomCommand cmdTest = new CustomCommand(CommandCategory.Tools, "UltraPaste_Test");

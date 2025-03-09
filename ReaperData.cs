@@ -161,9 +161,9 @@ namespace UltraPaste
             return data;
         }
 
-        public List<TrackEvent> GenerateEventsToVegas(Timecode start, bool closeBegin = true)
+        public List<AudioEvent> GenerateEventsToVegas(Timecode start, bool closeBegin = true)
         {
-            List<TrackEvent> l = new List<TrackEvent>();
+            List<AudioEvent> l = new List<AudioEvent>();
             if (IsFromTrackData)
             {
                 foreach (Track t in UltraPasteCommon.myVegas.Project.Tracks)
@@ -215,22 +215,18 @@ namespace UltraPaste
                 {
                     AudioTrack trk = new AudioTrack(UltraPasteCommon.myVegas.Project, -1, track.Name);
                     UltraPasteCommon.myVegas.Project.Tracks.Add(trk);
-                    if (track.VolPan != null)
+                    if (track.VolPan?.Length > 0)
                     {
-                        if (track.VolPan.Length > 0)
-                        {
-                            trk.Volume = (float)track.VolPan[0];
-                        }
-                        if (track.VolPan.Length > 1)
-                        {
-                            trk.PanX = (float)track.VolPan[1];
-                        }
+                        trk.Volume = (float)track.VolPan[0];
                     }
-                    if (track.MuteSolo != null)
+                    if (track.VolPan?.Length > 1)
                     {
-                        trk.Mute = track.MuteSolo.Length > 0 && track.MuteSolo[0] == 1;
-                        trk.Solo = track.MuteSolo.Length > 1 && track.MuteSolo[1] == 2;
+                        trk.PanX = (float)track.VolPan[1];
                     }
+
+                    trk.Mute = track.MuteSolo?.Length > 0 && track.MuteSolo[0] == 1;
+                    trk.Solo = track.MuteSolo?.Length > 1 && track.MuteSolo[1] == 2;
+
                     trk.InvertPhase = track.IPhase;
 
                     foreach (ReaperEnvelope env in track.Envelopes)
@@ -327,231 +323,225 @@ namespace UltraPaste
                         }
                     }
 
-                    List<TrackEvent> evs = UltraPasteCommon.myVegas.Project.GenerateEvents<TrackEvent>(media, start + Timecode.FromSeconds(item.Position[0]), Timecode.FromSeconds(item.Length[0]), false, lastTrack == null ? 0 : (lastTrack.Index + 1));
-                    foreach (TrackEvent ev in evs)
+                    List<AudioEvent> evs = UltraPasteCommon.myVegas.Project.GenerateEvents<AudioEvent>(media, start + Timecode.FromSeconds(item.Position[0]), Timecode.FromSeconds(item.Length[0]), false, lastTrack == null ? 0 : (lastTrack.Index + 1));
+                    foreach (AudioEvent ev in evs)
                     {
                         ev.Loop = item.Loop;
                         ev.Selected = item.Selected;
-                        ev.SnapOffset = Timecode.FromSeconds(item.SnapOffs != null && item.SnapOffs.Length > 0 ? item.SnapOffs[0] : 0);
-                        ev.Mute = item.Mute != null && item.Mute.Length > 0 && item.Mute[0] != 0;
+                        ev.SnapOffset = Timecode.FromSeconds(item.SnapOffs?.Length > 0 ? item.SnapOffs[0] : 0);
+                        ev.Mute = item.Mute?.Length > 0 && item.Mute[0] != 0;
                         if (ev.ActiveTake != null)
                         {
                             ev.ActiveTake.Offset = Timecode.FromSeconds(item.SOffs);
                         }
-                        if (item.PlayRate != null && item.PlayRate.Length > 0)
+                        if (item.PlayRate?.Length > 0)
                         {
                             ev.AdjustPlaybackRate(item.PlayRate[0], true);
                         }
-                        if (ev is AudioEvent)
+
+                        ev.Channels = item.ChanMode == 1 ? ChannelRemapping.Swap : item.ChanMode == 2 ? ChannelRemapping.Mono : item.ChanMode == 3 ? ChannelRemapping.DisableRight : item.ChanMode == 4 ? ChannelRemapping.DisableLeft : ChannelRemapping.None;
+                        if (item.FadeIn?.Length > 1)
                         {
-                            AudioEvent aEvent = ev as AudioEvent;
-                            aEvent.Channels = item.ChanMode == 1 ? ChannelRemapping.Swap : item.ChanMode == 2 ? ChannelRemapping.Mono : item.ChanMode == 3 ? ChannelRemapping.DisableRight : item.ChanMode == 4 ? ChannelRemapping.DisableLeft : ChannelRemapping.None;
-                            if (item.FadeIn != null && item.FadeIn.Length > 1)
+                            ev.FadeIn.Length = Timecode.FromSeconds(item.FadeIn[1]);
+                            if (item.FadeIn?.Length > 3)
                             {
-                                ev.FadeIn.Length = Timecode.FromSeconds(item.FadeIn[1]);
-                                if (item.FadeIn.Length > 3)
-                                {
-                                    ev.FadeIn.Curve = item.FadeIn[3] == 0 ? CurveType.Linear : (item.FadeIn[3] == 2 || item.FadeIn[3] == 4) ? CurveType.Slow : item.FadeIn[3] == 5 ? CurveType.Smooth : item.FadeIn[3] == 6 ? CurveType.Sharp : CurveType.Fast;
-                                }
+                                ev.FadeIn.Curve = item.FadeIn[3] == 0 ? CurveType.Linear : (item.FadeIn[3] == 2 || item.FadeIn[3] == 4) ? CurveType.Slow : item.FadeIn[3] == 5 ? CurveType.Smooth : item.FadeIn[3] == 6 ? CurveType.Sharp : CurveType.Fast;
                             }
-                            if (item.FadeOut != null && item.FadeOut.Length > 1)
+                        }
+                        if (item.FadeOut?.Length > 1)
+                        {
+                            ev.FadeOut.Length = Timecode.FromSeconds(item.FadeOut[1]);
+                            if (item.FadeOut?.Length > 3)
                             {
-                                ev.FadeOut.Length = Timecode.FromSeconds(item.FadeOut[1]);
-                                if (item.FadeOut.Length > 3)
-                                {
-                                    ev.FadeOut.Curve = item.FadeOut[3] == 0 ? CurveType.Linear : (item.FadeOut[3] == 2 || item.FadeOut[3] == 4) ? CurveType.Fast : item.FadeOut[3] == 5 ? CurveType.Smooth : item.FadeOut[3] == 6 ? CurveType.Sharp : CurveType.Slow;
-                                }
+                                ev.FadeOut.Curve = item.FadeOut[3] == 0 ? CurveType.Linear : (item.FadeOut[3] == 2 || item.FadeOut[3] == 4) ? CurveType.Fast : item.FadeOut[3] == 5 ? CurveType.Smooth : item.FadeOut[3] == 6 ? CurveType.Sharp : CurveType.Slow;
                             }
-                            if (item.VolPan != null)
-                            {
-                                if (item.VolPan.Length > 0)
-                                {
-                                    ev.FadeIn.Gain = (float)item.VolPan[0];
-                                }
-                                if (item.VolPan.Length > 2)
-                                {
-                                    aEvent.Normalize = item.VolPan[2] != 1;
-                                    if (aEvent.Normalize)
-                                    {
-                                        aEvent.NormalizeGain = Math.Abs(item.VolPan[2]);
-                                    }
-                                    aEvent.InvertPhase = item.VolPan[2] < 0;
-                                }
-                            }
-                            if (item.PlayRate != null)
-                            {
-                                aEvent.PitchSemis = item.PlayRate.Length > 2 ? (int)item.PlayRate[2] : 0;
-                                if (item.PlayRate.Length > 1 && (int)item.PlayRate[1] == 0)
-                                {
-                                    aEvent.PitchSemis += Math.Log(aEvent.PlaybackRate, 2) * 12;
-                                }
-                                int methodType = item.PlayRate.Length > 3 ? (int)item.PlayRate[3] : 0;
-                                switch (methodType / 0x10000)
-                                {
-                                    case 0x6:
-                                    case 0x9:
-                                        aEvent.Method = TimeStretchPitchShift.Elastique;
-                                        aEvent.ElastiqueAttribute = ElastiqueStretchAttributes.Pro;
-                                        aEvent.FormantLock = methodType - (methodType / 8 * 8) != 0;
-                                        break;
+                        }
 
-                                    case 0x7:
-                                    case 0xA:
-                                        aEvent.Method = TimeStretchPitchShift.Elastique;
-                                        aEvent.ElastiqueAttribute = ElastiqueStretchAttributes.Efficient;
-                                        break;
-
-                                    case 0x8:
-                                    case 0xB:
-                                        aEvent.Method = TimeStretchPitchShift.Elastique;
-                                        aEvent.ElastiqueAttribute = (methodType - (methodType / 4 * 4)) / 2 == 0 ? ElastiqueStretchAttributes.Soloist_Monophonic : ElastiqueStretchAttributes.Soloist_Speech;
-                                        break;
-
-                                    default:
-                                        break;
-                                }
-                            }
-                            List<ReaperEnvelope> envs = new List<ReaperEnvelope>();
-                            foreach (ReaperEnvelope env in track.Envelopes)
+                        if (item.VolPan?.Length > 0)
+                        {
+                            ev.FadeIn.Gain = (float)item.VolPan[0];
+                        }
+                        if (item.VolPan?.Length > 2)
+                        {
+                            ev.Normalize = item.VolPan[2] != 1;
+                            if (ev.Normalize)
                             {
-                                if (env != null && env.SegRange != null)
-                                {
-                                    envs.Add(env);
-                                }
+                                ev.NormalizeGain = Math.Abs(item.VolPan[2]);
                             }
-                            envs.AddRange(item.Envelopes);
-                            foreach (ReaperEnvelope env in envs)
+                            ev.InvertPhase = item.VolPan[2] < 0;
+                        }
+
+                        ev.PitchSemis = item.PlayRate?.Length > 2 ? item.PlayRate[2] : 0;
+                        if (item.PlayRate?.Length > 1 && (int)item.PlayRate[1] == 0)
+                        {
+                            ev.PitchSemis += Math.Log(ev.PlaybackRate, 2) * 12;
+                        }
+                        int methodType = item.PlayRate.Length > 3 ? (int)item.PlayRate[3] : 0;
+                        switch (methodType / 0x10000)
+                        {
+                            case 0x6:
+                            case 0x9:
+                                ev.Method = TimeStretchPitchShift.Elastique;
+                                ev.ElastiqueAttribute = ElastiqueStretchAttributes.Pro;
+                                ev.FormantLock = methodType - (methodType / 8 * 8) != 0;
+                                break;
+
+                            case 0x7:
+                            case 0xA:
+                                ev.Method = TimeStretchPitchShift.Elastique;
+                                ev.ElastiqueAttribute = ElastiqueStretchAttributes.Efficient;
+                                break;
+
+                            case 0x8:
+                            case 0xB:
+                                ev.Method = TimeStretchPitchShift.Elastique;
+                                ev.ElastiqueAttribute = (methodType - (methodType / 4 * 4)) / 2 == 0 ? ElastiqueStretchAttributes.Soloist_Monophonic : ElastiqueStretchAttributes.Soloist_Speech;
+                                break;
+
+                            default:
+                                break;
+                        }
+
+                        List<ReaperEnvelope> envs = new List<ReaperEnvelope>();
+                        foreach (ReaperEnvelope env in track.Envelopes)
+                        {
+                            if (env != null && env.SegRange != null)
                             {
-                                if (env.Act[0] == 0)
-                                {
+                                envs.Add(env);
+                            }
+                        }
+                        envs.AddRange(item.Envelopes);
+                        foreach (ReaperEnvelope env in envs)
+                        {
+                            if (env.Act[0] == 0)
+                            {
+                                continue;
+                            }
+                            Envelope en = null;
+                            switch (env.Type)
+                            {
+                                case "VOLENV":
+                                case "VOLENV2":
+                                    en = ev.Track.Envelopes.FindByType(EnvelopeType.Volume) ?? new Envelope(EnvelopeType.Volume);
+                                    break;
+
+                                // note that item pan envelopes ("PANENV", but not "PANENV2") in Reaper represent the actual pan taken from the source,
+                                // and they're not really supposed to be converted into track pan envelopes...
+                                // until there's a better way, we have to replace them with track pan envelopes
+                                case "PANENV":
+                                case "PANENV2":
+                                    en = ev.Track.Envelopes.FindByType(EnvelopeType.Pan) ?? new Envelope(EnvelopeType.Pan);
+                                    break;
+
+                                case "MUTEENV":
+                                    en = ev.Track.Envelopes.FindByType(EnvelopeType.Mute) ?? new Envelope(EnvelopeType.Mute);
+                                    break;
+
+                                default:
                                     continue;
-                                }
-                                Envelope en = null;
-                                switch (env.Type)
+                            }
+                            if (!ev.Track.Envelopes.Contains(en))
+                            {
+                                ev.Track.Envelopes.Add(en);
+                            }
+
+                            EnvelopePoint pointPrev = en.Points[0];
+                            List<EnvelopePoint> pointsNext = new List<EnvelopePoint>();
+                            foreach (EnvelopePoint point in en.Points)
+                            {
+                                if (point.X < ev.Start)
                                 {
-                                    case "VOLENV":
-                                    case "VOLENV2":
-                                        en = aEvent.Track.Envelopes.FindByType(EnvelopeType.Volume) ?? new Envelope(EnvelopeType.Volume);
-                                        break;
-
-                                    // note that item pan envelopes ("PANENV", but not "PANENV2") in Reaper represent the actual pan taken from the source,
-                                    // and they're not really supposed to be converted into track pan envelopes...
-                                    // until there's a better way, we have to replace them with track pan envelopes
-                                    case "PANENV":
-                                    case "PANENV2":
-                                        en = aEvent.Track.Envelopes.FindByType(EnvelopeType.Pan) ?? new Envelope(EnvelopeType.Pan);
-                                        break;
-
-                                    case "MUTEENV":
-                                        en = aEvent.Track.Envelopes.FindByType(EnvelopeType.Mute) ?? new Envelope(EnvelopeType.Mute);
-                                        break;
-
-                                    default:
-                                        continue;
+                                    pointPrev = point;
                                 }
-                                if (!aEvent.Track.Envelopes.Contains(en))
+                                else
                                 {
-                                    aEvent.Track.Envelopes.Add(en);
-                                }
-
-                                EnvelopePoint pointPrev = en.Points[0];
-                                List<EnvelopePoint> pointsNext = new List<EnvelopePoint>();
-                                foreach (EnvelopePoint point in en.Points)
-                                {
-                                    if (point.X < aEvent.Start)
+                                    pointsNext.Add(point);
+                                    if (point.X >= ev.End)
                                     {
-                                        pointPrev = point;
-                                    }
-                                    else
-                                    {
-                                        pointsNext.Add(point);
-                                        if (point.X >= aEvent.End)
-                                        {
-                                            break;
-                                        }
+                                        break;
                                     }
                                 }
-                                if (en.Type != EnvelopeType.Mute && (pointsNext.Count > 1 || (pointsNext.Count == 1 && pointPrev.Curve != CurveType.None && pointsNext[0].Y != pointPrev.Y)))
+                            }
+                            if (en.Type != EnvelopeType.Mute && (pointsNext.Count > 1 || (pointsNext.Count == 1 && pointPrev.Curve != CurveType.None && pointsNext[0].Y != pointPrev.Y)))
+                            {
+                                // unless there's a suitable way to handle both track envelope and item envelope, I'm not going to mix the two...
+                                continue;
+                            }
+                            pointPrev.Curve = CurveType.None;
+                            Timecode pointEndTime = ev.End;
+                            if (env.SegRange == null)
+                            {
+                                pointEndTime -= Timecode.FromNanos(1);
+                            }
+                            EnvelopePoint pointStart = en.Points.GetPointAtX(ev.Start), pointEnd = en.Points.GetPointAtX(pointEndTime);
+                            if (pointStart == null)
+                            {
+                                pointStart = new EnvelopePoint(ev.Start, en.ValueAt(ev.Start));
+                                en.Points.Add(pointStart);
+                            }
+                            pointStart.Curve = CurveType.None;
+                            if (pointEnd == null)
+                            {
+                                pointEnd = new EnvelopePoint(pointEndTime, en.ValueAt(pointEndTime));
+                                en.Points.Add(pointEnd);
+                            }
+                            pointEnd.Curve = CurveType.None;
+
+                            EnvelopePoint pointLast = null;
+                            foreach (double[] p in env.Points)
+                            {
+                                Timecode t = Timecode.FromSeconds(p[0]) + ev.Start;
+                                if (env.SegRange != null)
                                 {
-                                    // unless there's a suitable way to handle both track envelope and item envelope, I'm not going to mix the two...
-                                    continue;
+                                    t -= Timecode.FromSeconds(env.SegRange[0]);
+                                    if (p == env.Points[env.Points.Count - 1])
+                                    {
+                                        t -= Timecode.FromNanos(1);
+                                    }
                                 }
-                                pointPrev.Curve = CurveType.None;
-                                Timecode pointEndTime = aEvent.End;
+                                CurveType curve = p[2] == 0 ? CurveType.Linear : p[2] == 1 ? CurveType.None : p[2] == 3 ? CurveType.Fast : p[2] == 4 ? CurveType.Slow : CurveType.Smooth;
+                                EnvelopePoint point = en.Points.GetPointAtX(t);
+                                double value = p[1];
                                 if (env.SegRange == null)
                                 {
-                                    pointEndTime -= Timecode.FromNanos(1);
+                                    if (en.Type == EnvelopeType.Volume || en.Type == EnvelopeType.Mute)
+                                    {
+                                        value *= pointPrev.Y;
+                                    }
+                                    else if (en.Type == EnvelopeType.Pan)
+                                    {
+                                        value = (1 - Math.Sqrt((1 - Math.Abs(pointPrev.Y)) * (1 - Math.Abs(value)))) * (pointPrev.Y + value > 0 ? 1 : pointPrev.Y + value < 0 ? -1 : 0);
+                                    }
                                 }
-                                EnvelopePoint pointStart = en.Points.GetPointAtX(aEvent.Start), pointEnd = en.Points.GetPointAtX(pointEndTime);
-                                if (pointStart == null)
-                                {
-                                    pointStart = new EnvelopePoint(aEvent.Start, en.ValueAt(aEvent.Start));
-                                    en.Points.Add(pointStart);
-                                }
-                                pointStart.Curve = CurveType.None;
-                                if (pointEnd == null)
-                                {
-                                    pointEnd = new EnvelopePoint(pointEndTime, en.ValueAt(pointEndTime));
-                                    en.Points.Add(pointEnd);
-                                }
-                                pointEnd.Curve = CurveType.None;
 
-                                EnvelopePoint pointLast = null;
-                                foreach (double[] p in env.Points)
+                                if (point != null)
                                 {
-                                    Timecode t = Timecode.FromSeconds(p[0]) + aEvent.Start;
-                                    if (env.SegRange != null)
-                                    {
-                                        t -= Timecode.FromSeconds(env.SegRange[0]);
-                                        if (p == env.Points[env.Points.Count - 1])
-                                        {
-                                            t -= Timecode.FromNanos(1);
-                                        }
-                                    }
-                                    CurveType curve = p[2] == 0 ? CurveType.Linear : p[2] == 1 ? CurveType.None : p[2] == 3 ? CurveType.Fast : p[2] == 4 ? CurveType.Slow : CurveType.Smooth;
-                                    EnvelopePoint point = en.Points.GetPointAtX(t);
-                                    double value = p[1];
-                                    if (env.SegRange == null)
-                                    {
-                                        if (en.Type == EnvelopeType.Volume || en.Type == EnvelopeType.Mute)
-                                        {
-                                            value *= pointPrev.Y;
-                                        }
-                                        else if (en.Type == EnvelopeType.Pan)
-                                        {
-                                            value = (1 - Math.Sqrt((1 - Math.Abs(pointPrev.Y)) * (1 - Math.Abs(value)))) * (pointPrev.Y + value > 0 ? 1 : pointPrev.Y + value < 0 ? -1 : 0);
-                                        }
-                                    }
-
-                                    if (point != null)
-                                    {
-                                        point.Y = value;
-                                    }
-                                    else
-                                    {
-                                        point = new EnvelopePoint(t, value);
-                                        en.Points.Add(point);
-                                    }
-                                    point.Curve = curve;
-                                    pointLast = point;
-                                    if (p == env.Points[0] && point != pointStart)
-                                    {
-                                        pointStart.Y = point.Y;
-                                    }
+                                    point.Y = value;
                                 }
-                                pointLast.Curve = CurveType.None;
+                                else
+                                {
+                                    point = new EnvelopePoint(t, value);
+                                    en.Points.Add(point);
+                                }
+                                point.Curve = curve;
+                                pointLast = point;
+                                if (p == env.Points[0] && point != pointStart)
+                                {
+                                    pointStart.Y = point.Y;
+                                }
                             }
+                            pointLast.Curve = CurveType.None;
                         }
                         if (item.Takes != null)
                         {
                             foreach (ReaperTake t in item.Takes)
                             {
                                 Media m = UltraPasteCommon.myVegas.GetValidMedia(t.Source.FilePath);
-                                if (m == null)
+                                if (m?.HasAudio() != true)
                                 {
                                     continue;
                                 }
-                                MediaStream ms = ev is VideoEvent && m.HasVideo() ? (MediaStream)m.GetVideoStreamByIndex(0) : m.GetAudioStreamByIndex(0);
+                                AudioStream ms = m.GetAudioStreamByIndex(0);
                                 Take tk = ev.AddTake(ms, false);
                                 tk.Offset = Timecode.FromSeconds(t.SOffs);
                                 if (t.Selected)
@@ -574,7 +564,6 @@ namespace UltraPaste
             {
                 ev.Track.Selected = true;
             }
-
             return l;
         }
 
@@ -825,7 +814,7 @@ namespace UltraPaste
                                     currentTrack.Envelopes.Add(env);
                                 }
                             }
-                            else if (child.Lines != null && child.Lines.Count > 0 && child.Lines[0] != null && child.Lines[0].Split(' ')[0].ToUpper() == "TRACKSKIP")
+                            else if (child.Lines?.Count > 0 && child.Lines[0]?.Split(' ')[0].ToUpper() == "TRACKSKIP")
                             {
                                 currentTrack = new ReaperTrack();
                                 data.Tracks.Add(currentTrack);
@@ -837,7 +826,7 @@ namespace UltraPaste
                         foreach (ReaperBlock child in block.Children)
                         {
                             data = ParseFromBlock<ReaperData>(child);
-                            if (data != null && data.Tracks.Count > 0)
+                            if (data?.Tracks.Count > 0)
                             {
                                 break;
                             }

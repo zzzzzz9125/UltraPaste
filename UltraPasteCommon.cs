@@ -15,6 +15,7 @@ using System.Collections.Generic;
 
 namespace UltraPaste
 {
+    using static VirtualKeyboard;
     public static class UltraPasteCommon
     {
         public static string AppFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -25,13 +26,20 @@ namespace UltraPaste
         public static Vegas myVegas;
         public static KeyValuePair<Image, string> LastImageAndPath = new KeyValuePair<Image, string>();
         public static KeyValuePair<Stream, string> LastAudioStreamAndPath = new KeyValuePair<Stream, string>();
+        public static int count = 0;
 
         public static void DoPaste()
         {
             string projectFileToOpen = null, scriptFileToRun = null;
+            bool pasteAttributes = false;
+
+            if (Clipboard.GetDataObject() == null)
+            {
+                return;
+            }
+
             using (UndoBlock undo = new UndoBlock(myVegas.Project, L.UltraPaste))
             {
-
                 Timecode start = myVegas.Transport.SelectionStart, length = myVegas.Transport.SelectionLength;
                 if (length.Nanos < 0)
                 {
@@ -122,7 +130,9 @@ namespace UltraPaste
                         else if (ext == ".rpp")
                         {
                             ReaperData rd = ReaperData.Parser.Parse(path);
-                            addedEvents = rd.GenerateEventsToVegas(startTime, true);
+                            addedEvents = new List<TrackEvent>();
+                            addedEvents.AddRange(rd.GenerateEventsToVegas(startTime, true));
+                            addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents));
                         }
                         else if (ext == ".srt" || ext == ".lrc")
                         {
@@ -139,6 +149,15 @@ namespace UltraPaste
                             // Running the script file in UndoBlock causes an UndoBlock error, so we have to jump out of UndoBlock...
                             scriptFileToRun = path;
                             break;
+                        }
+                        else if (ext == ".psd")
+                        {
+                            addedEvents = myVegas.GenerateEvents<TrackEvent>(path, startTime, null, true);
+                            foreach (TrackEvent ev in addedEvents)
+                            {
+                                ev.Mute = true;
+                            }
+                            addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents, true));
                         }
                         else
                         {
@@ -178,6 +197,7 @@ namespace UltraPaste
                     foreach (Media media in mediaList)
                     {
                         List<TrackEvent> addedEvents = myVegas.Project.GenerateEvents<TrackEvent>(media, startTime, singleLength, true);
+                        addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents));
                         startTime = addedEvents.GetEndTimeFromEvents();
                         evs.AddRange(addedEvents);
                     }
@@ -188,35 +208,40 @@ namespace UltraPaste
                     foreach (string format in Clipboard.GetDataObject().GetFormats())
                     {
                         object obj = Clipboard.GetData(format);
-                        if (obj is MemoryStream)
+                        if (obj is MemoryStream ms)
                         {
-                            byte[] bytes = null;
-                            using (MemoryStream ms = obj as MemoryStream)
-                            {
-                                bytes = new byte[ms.Capacity];
-                                if (ms.CanRead)
-                                {
-                                    ms.Read(bytes, 0, ms.Capacity);
-                                }
-                            }
+                            byte[] bytes = ms.ToArray();
 
                             if (bytes == null)
                             {
                                 continue;
                             }
 
-                            File.WriteAllBytes(Path.Combine(baseFolder, string.Format("{0}.txt", format)), bytes);
+                            File.WriteAllBytes(Path.Combine(baseFolder, "114", string.Format("{0}.txt", format)), bytes);
 
                             switch (format.ToUpper())
                             {
+                                // "Sony Vegas Meta-Data 5.0" or "Vegas Meta-Data 5.0" for VEGAS Pro
+                                case "SONY VEGAS META-DATA 5.0" when Common.VegasVersion < 14:
+                                case "VEGAS META-DATA 5.0" when Common.VegasVersion > 13:
+                                    if (myVegas.Project.GetSelectedEvents<TrackEvent>().Count > 0)
+                                    {
+                                        pasteAttributes = true;
+                                        success = true;
+                                    }
+                                    break;
+
                                 // "REAPERMedia" for Cockos REAPER
                                 case "REAPERMEDIA":
                                     ReaperData rd = ReaperData.Parser.Parse(bytes);
-                                    evs.AddRange(rd.GenerateEventsToVegas(start, true));
+                                    List<TrackEvent> addedEvents = new List<TrackEvent>();
+                                    addedEvents.AddRange(rd.GenerateEventsToVegas(start, true));
+                                    evs.AddRange(addedEvents);
+                                    evs.AddRange(myVegas.Project.AddMissingStreams(addedEvents));
                                     success = true;
                                     break;
 
-                                // "PProAE/Exchange/TrackItem" for Adobe After Effects (not be implemented...)
+                                // "PProAE/Exchange/TrackItem" for Adobe Premiere Pro and Adobe After Effects (not be implemented...)
                                 case "PPROAE/EXCHANGE/TRACKITEM":
 
                                     break;
@@ -261,6 +286,27 @@ namespace UltraPaste
             else if (scriptFileToRun != null)
             {
                 myVegas.RunScriptFile(scriptFileToRun);
+            }
+            else if (pasteAttributes)
+            {
+                SendKeyboardMouse sendKeyMouse = new SendKeyboardMouse();
+
+                sendKeyMouse.SendAllKeysUp();
+
+                // Alt + E ("Edit" Menu)
+                sendKeyMouse.SendKeyPress(new byte[] { VKCODE.VK_MENU, VKCODE.VK_E });
+
+                // V (Paste Event Attributes)
+                sendKeyMouse.SendKeyPress(VKCODE.VK_V);
+
+                if (Common.VegasVersion > 14)
+                {
+                    // Down (Selectively Paste Event Attributes)
+                    sendKeyMouse.SendKeyPress(VKCODE.VK_DOWN);
+                }
+
+                // Enter
+                sendKeyMouse.SendKeyPress(VKCODE.VK_RETURN);
             }
         }
     }

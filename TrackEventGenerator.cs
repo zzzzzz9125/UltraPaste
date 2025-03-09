@@ -116,41 +116,15 @@ namespace UltraPaste
                     ev.AddTake(ms);
                 }
                 l.Add(ev);
-
-                if (myTrack.IsVideo() && media != null && media.HasVideo() && media.HasAudio())
-                {
-                    TrackEventGroup group = ev.Group;
-                    if (group == null)
-                    {
-                        group = new TrackEventGroup(project);
-                        project.TrackEventGroups.Add(group);
-                        group.Add(ev);
-                    }
-                    for (int i = 0; i < media.StreamCount(MediaType.Audio); i++)
-                    {
-                        AudioStream streamAudio = media.GetAudioStreamByIndex(i);
-                        AudioEvent eventAudio = new AudioEvent(project, start, length, null);
-                        Track trackBelow = myTrack.Index + i < project.Tracks.Count - 1 ? project.Tracks[myTrack.Index + i + 1] : null;
-                        if (trackBelow == null || !trackBelow.IsAudio())
-                        {
-                            trackBelow = new AudioTrack(project, myTrack.Index + i + 1, null);
-                            project.Tracks.Add(trackBelow);
-                        }
-                        trackBelow.Events.Add(eventAudio);
-                        eventAudio.AddTake(streamAudio);
-                        group.Add(eventAudio);
-                        l.Add((T)(TrackEvent)eventAudio);
-                        audioVideoPair.Add((AudioTrack)trackBelow, (VideoTrack)myTrack);
-                    }
-                }
             }
+
             return l;
         }
 
-        public static List<T> AddMissingStreams<T>(this Project project, IEnumerable<T> evs) where T : TrackEvent
+        public static List<T> AddMissingStreams<T>(this Project project, IEnumerable<T> evs, bool reverse = false) where T : TrackEvent
         {
             List<T> l = new List<T>();
-            foreach (TrackEvent ev in evs)
+            foreach (T ev in evs)
             {
                 if (ev.Takes.Count == 0)
                 {
@@ -184,8 +158,18 @@ namespace UltraPaste
 
                 streams.Sort((a, b) => { return Math.Abs(a.Index - ev.ActiveTake.MediaStream.Index) - Math.Abs(b.Index - ev.ActiveTake.MediaStream.Index); });
 
+                if (reverse)
+                {
+                    streams.Reverse();
+                }
+                
                 foreach (MediaStream stream in streams)
                 {
+                    if ((typeof(T) == typeof(VideoEvent) && stream.MediaType != MediaType.Video) || (typeof(T) == typeof(AudioEvent) && stream.MediaType != MediaType.Audio))
+                    {
+                        continue;
+                    }
+
                     Track track = null;
                     int indexOffset = stream.Index - ev.ActiveTake.MediaStream.Index;
                     if (indexOffset == 0)
