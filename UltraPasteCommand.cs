@@ -6,6 +6,7 @@ using Sony.Vegas;
 
 using System;
 using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace UltraPaste
 {
@@ -19,7 +20,7 @@ namespace UltraPaste
             myVegas = vegas;
             UltraPasteCommon.myVegas = vegas;
             L.Localize();
-            CustomCommand cmdParent = new CustomCommand(CommandCategory.Tools, "UltraPaste") { DisplayName = L.UltraPaste };
+            CustomCommand cmdParent = new CustomCommand(CommandCategory.Tools, "UltraPaste_Group") { DisplayName = L.UltraPaste };
             CustomCommands.Add(cmdParent);
             CustomCommand cmdWindow = new CustomCommand(CommandCategory.Tools, "UltraPaste_Window") { DisplayName = L.UltraPasteWindow };
             cmdWindow.Invoked += delegate (object o, EventArgs e)
@@ -36,7 +37,7 @@ namespace UltraPaste
             cmdWindow.SetIconFile("UltraPaste.png");
             cmdParent.AddChild(cmdWindow);
             CustomCommands.Add(cmdWindow);
-            CustomCommand cmdDoPaste = new CustomCommand(CommandCategory.Tools, "UltraPaste_0_DoPaste") { DisplayName = L.UltraPaste };
+            CustomCommand cmdDoPaste = new CustomCommand(CommandCategory.Tools, "UltraPaste") { DisplayName = L.UltraPaste };
             cmdDoPaste.Invoked += delegate (object o, EventArgs e)
             {
                 UltraPasteCommon.DoPaste();

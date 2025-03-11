@@ -13,8 +13,6 @@ using System.Xml.Serialization;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
-using System.ComponentModel;
-using static System.Windows.Forms.DataFormats;
 
 #if TEST
 public static class S
@@ -29,6 +27,14 @@ public static class S
 public static class Common
 {
     public static int VegasVersion = FileVersionInfo.GetVersionInfo(Application.ExecutablePath).FileMajorPart;
+
+    public static double CalculatePointCoordinateInLine(double x1, double y1, double x2, double y2, double x3)
+    {
+        double k = (y2 - y1) / (x2 - x1);
+        double b = y1 - k * x1;
+        return k * x3 + b;
+    }
+
 
     [DllImport("shell32.dll", ExactSpelling = true)]
     private static extern void ILFree(IntPtr pidlList);
@@ -62,90 +68,6 @@ public static class Common
             }
         }
     }
-
-    [DllImport("user32.dll", EntryPoint = "keybd_event", SetLastError = true)]
-    public static extern void keybd_event(Keys bVk, byte bScan, uint dwFlags, uint dwExtraInfo);
-
-    public static void DoKey(this Keys bVk, uint dwFlags)
-    {
-        keybd_event(bVk, 0, dwFlags, 0);
-    }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
-
-    private enum InputType : uint
-    {
-        INPUT_KEYBOARD = 1
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct INPUT
-    {
-        public InputType type;
-        public KEYBDINPUT ki;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct KEYBDINPUT
-    {
-        public ushort wVk;
-        public ushort wScan;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;
-    }
-
-    private const ushort VK_MENU = 0x12;     // Alt键
-    private const ushort VK_E = 0x45;
-    private const ushort VK_S = 0x53;
-    private const ushort VK_DOWN = 0x28;     // 方向键↓
-    private const ushort VK_RETURN = 0x0D;   // Enter键
-    private const uint KEYEVENTF_KEYUP = 0x0002;
-
-    public static void SendComplexShortcut()
-    {
-        // 总事件数 = (Alt+E的4个事件) + (S的2个) + (↓×2的4个) + (Enter的2个) = 12
-        INPUT[] inputs = new INPUT[4];
-        int index = 0;
-        int inputSize = Marshal.SizeOf(typeof(INPUT));
-
-        MessageBox.Show("1");
-
-        // 1. Alt+E 组合键
-        inputs[index++] = CreateKeyboardInput(VK_MENU, 0);       // Alt按下
-        inputs[index++] = CreateKeyboardInput(VK_E, 0);           // E按下
-        inputs[index++] = CreateKeyboardInput(VK_E, KEYEVENTF_KEYUP);  // E释放
-        inputs[index++] = CreateKeyboardInput(VK_MENU, KEYEVENTF_KEYUP); // Alt释放
-
-        MessageBox.Show("2");
-
-        // 发送所有输入事件
-        uint successCount = SendInput((uint)inputs.Length, inputs, inputSize);
-        MessageBox.Show(successCount.ToString());
-        if (successCount != inputs.Length)
-        {
-            MessageBox.Show("4");
-            throw new Win32Exception(Marshal.GetLastWin32Error());
-        }
-    }
-
-    private static INPUT CreateKeyboardInput(ushort keyCode, uint flags)
-    {
-        return new INPUT
-        {
-            type = InputType.INPUT_KEYBOARD,
-            ki = new KEYBDINPUT
-            {
-                wVk = keyCode,
-                wScan = 0,
-                dwFlags = flags,
-                time = 0,
-                dwExtraInfo = IntPtr.Zero
-            }
-        };
-    }
-
 
     public static bool IsPathMatch(string path, string dosExpression)
     {

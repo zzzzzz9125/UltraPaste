@@ -929,7 +929,19 @@ namespace UltraPaste
                 SendKeyUp(vkCode);
             }
 
-            public void SendKeyPress(byte[] vkCodes, int time = 0)
+            public void SendKeyPress(params byte[] vkCodes)
+            {
+                foreach (byte vkCode in vkCodes)
+                {
+                    SendKeyDown(vkCode);
+                }
+                foreach (byte vkCode in vkCodes)
+                {
+                    SendKeyUp(vkCode);
+                }
+            }
+
+            public void SendKeyPress(int time, params byte[] vkCodes)
             {
                 foreach (byte vkCode in vkCodes)
                 {

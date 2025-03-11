@@ -38,6 +38,7 @@ namespace UltraPaste
                 return;
             }
 
+            Timecode cursorSave = myVegas.Transport.CursorPosition, cursor = cursorSave;
             using (UndoBlock undo = new UndoBlock(myVegas.Project, L.UltraPaste))
             {
                 Timecode start = myVegas.Transport.SelectionStart, length = myVegas.Transport.SelectionLength;
@@ -131,8 +132,7 @@ namespace UltraPaste
                         {
                             ReaperData rd = ReaperData.Parser.Parse(path);
                             addedEvents = new List<TrackEvent>();
-                            addedEvents.AddRange(rd.GenerateEventsToVegas(startTime, true));
-                            addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents));
+                            addedEvents.AddRange(rd.GenerateEventsToVegas(startTime, true, true));
                         }
                         else if (ext == ".srt" || ext == ".lrc")
                         {
@@ -141,7 +141,7 @@ namespace UltraPaste
                             List<Region> regions = subtitles.GenerateRegionsToVegas(startTime);
                             if (regions.Count > 0)
                             {
-                                myVegas.Transport.CursorPosition = regions.GetEndTimeFromMarkers();
+                                cursor = regions.GetEndTimeFromMarkers();
                             }
                         }
                         else if (ext == ".cs" || ext == ".js" || ext == ".vb" || ext == ".dll")
@@ -157,7 +157,7 @@ namespace UltraPaste
                             {
                                 ev.Mute = true;
                             }
-                            addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents, true));
+                            addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents, MediaType.Unknown, true));
                         }
                         else
                         {
@@ -234,10 +234,7 @@ namespace UltraPaste
                                 // "REAPERMedia" for Cockos REAPER
                                 case "REAPERMEDIA":
                                     ReaperData rd = ReaperData.Parser.Parse(bytes);
-                                    List<TrackEvent> addedEvents = new List<TrackEvent>();
-                                    addedEvents.AddRange(rd.GenerateEventsToVegas(start, true));
-                                    evs.AddRange(addedEvents);
-                                    evs.AddRange(myVegas.Project.AddMissingStreams(addedEvents));
+                                    evs.AddRange(rd.GenerateEventsToVegas(start, true, true));
                                     success = true;
                                     break;
 
@@ -275,8 +272,7 @@ namespace UltraPaste
                     {
                         ev.Selected = true;
                     }
-                    myVegas.UpdateUI();
-                    myVegas.Transport.CursorPosition = evs.GetEndTimeFromEvents();
+                    cursor = evs.GetEndTimeFromEvents();
                 }
             }
             if (projectFileToOpen != null)
@@ -294,7 +290,7 @@ namespace UltraPaste
                 sendKeyMouse.SendAllKeysUp();
 
                 // Alt + E ("Edit" Menu)
-                sendKeyMouse.SendKeyPress(new byte[] { VKCODE.VK_MENU, VKCODE.VK_E });
+                sendKeyMouse.SendKeyPress(VKCODE.VK_MENU, VKCODE.VK_E);
 
                 // V (Paste Event Attributes)
                 sendKeyMouse.SendKeyPress(VKCODE.VK_V);
@@ -307,6 +303,12 @@ namespace UltraPaste
 
                 // Enter
                 sendKeyMouse.SendKeyPress(VKCODE.VK_RETURN);
+            }
+            else if (cursor != cursorSave)
+            {
+                myVegas.UpdateUI();
+                myVegas.Transport.CursorPosition = cursor;
+                myVegas.Transport.ViewCursor(false);
             }
         }
     }

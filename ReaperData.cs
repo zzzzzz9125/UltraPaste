@@ -9,6 +9,8 @@ using System.IO;
 using System.Text;
 using System.Globalization;
 using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Forms;
 
 namespace UltraPaste
 {
@@ -60,9 +62,9 @@ namespace UltraPaste
                 int fadeOutType = ev.FadeOut.Curve == CurveType.Slow ? 1 : ev.FadeIn.Curve == CurveType.Fast ? 2 : ev.FadeIn.Curve == CurveType.Smooth ? 5 : ev.FadeIn.Curve == CurveType.Sharp ? 6 : 0;
                 ReaperItem item = new ReaperItem()
                 {
-                    Position = new double[] { ev.Start.ToMilliseconds() / 1000, ev.Start.ToMilliseconds() / 500 },
-                    SnapOffs = new double[] { ev.SnapOffset.ToMilliseconds() / 1000, ev.SnapOffset.ToMilliseconds() / 500 },
-                    Length = new double[] { ev.Length.ToMilliseconds() / 1000, ev.Length.ToMilliseconds() / 500 },
+                    Position = ev.Start.ToMilliseconds() / 1000,
+                    SnapOffs = ev.SnapOffset.ToMilliseconds() / 1000,
+                    Length = ev.Length.ToMilliseconds() / 1000,
                     Loop = ev.Loop,
                     FadeIn = new double[] { 1, ev.FadeIn.Length.ToMilliseconds() / 1000, 0, fadeInType, 0, fadeInType == 2 ? 1 : 0, fadeInType == 2 ? 1 : 0 },
                     FadeOut = new double[] { 1, ev.FadeOut.Length.ToMilliseconds() / 1000, 0, fadeOutType, 0, fadeOutType == 2 ? -1 : 0, fadeOutType == 2 ? -1 : 0 },
@@ -161,9 +163,9 @@ namespace UltraPaste
             return data;
         }
 
-        public List<AudioEvent> GenerateEventsToVegas(Timecode start, bool closeBegin = true)
+        public List<TrackEvent> GenerateEventsToVegas(Timecode start, bool closeBegin = true, bool addVideoStreams = true)
         {
-            List<AudioEvent> l = new List<AudioEvent>();
+            List<TrackEvent> l = new List<TrackEvent>();
             if (IsFromTrackData)
             {
                 foreach (Track t in UltraPasteCommon.myVegas.Project.Tracks)
@@ -184,7 +186,7 @@ namespace UltraPaste
                 {
                     foreach (ReaperItem item in track.Items)
                     {
-                        Timecode tmp = Timecode.FromSeconds(item.Position[0]);
+                        Timecode tmp = Timecode.FromSeconds(item.Position);
                         if (offset == null || tmp < offset)
                         {
                             offset = tmp;
@@ -323,12 +325,13 @@ namespace UltraPaste
                         }
                     }
 
-                    List<AudioEvent> evs = UltraPasteCommon.myVegas.Project.GenerateEvents<AudioEvent>(media, start + Timecode.FromSeconds(item.Position[0]), Timecode.FromSeconds(item.Length[0]), false, lastTrack == null ? 0 : (lastTrack.Index + 1));
+                    List<AudioEvent> evs = UltraPasteCommon.myVegas.Project.GenerateEvents<AudioEvent>(media, start + Timecode.FromSeconds(item.Position), Timecode.FromSeconds(item.Length), false, lastTrack == null ? 0 : (lastTrack.Index + 1));
+                    l.AddRange(evs);
                     foreach (AudioEvent ev in evs)
                     {
                         ev.Loop = item.Loop;
                         ev.Selected = item.Selected;
-                        ev.SnapOffset = Timecode.FromSeconds(item.SnapOffs?.Length > 0 ? item.SnapOffs[0] : 0);
+                        ev.SnapOffset = Timecode.FromSeconds(item.SnapOffs);
                         ev.Mute = item.Mute?.Length > 0 && item.Mute[0] != 0;
                         if (ev.ActiveTake != null)
                         {
@@ -400,6 +403,162 @@ namespace UltraPaste
 
                             default:
                                 break;
+                        }
+
+                        if (item.Takes != null)
+                        {
+                            foreach (ReaperTake t in item.Takes)
+                            {
+                                Media m = UltraPasteCommon.myVegas.GetValidMedia(t.Source.FilePath);
+                                if (m?.HasAudio() != true)
+                                {
+                                    continue;
+                                }
+                                AudioStream ms = m.GetAudioStreamByIndex(0);
+                                Take tk = ev.AddTake(ms, false);
+                                tk.Offset = Timecode.FromSeconds(t.SOffs);
+                                if (t.Selected)
+                                {
+                                    ev.ActiveTake = tk;
+                                }
+                            }
+                        }
+
+                        if (item.StretchSegments.Count > 0)
+                        {
+                            ReaperStretchSegments segments = new ReaperStretchSegments();
+                            segments.AddRange(item.StretchSegments.Where(s => s.OffsetStart < item.Length && s.OffsetEnd > 0));
+                            if (segments.Count > 0)
+                            {
+                                ReaperStretchSegment seg = segments[0];
+                                if (seg.OffsetStart < 0)
+                                {
+                                    seg.VelocityStart = Common.CalculatePointCoordinateInLine(seg.OffsetStart, seg.VelocityStart, seg.OffsetEnd, seg.VelocityEnd, 0);
+                                    seg.OffsetStart = 0;
+                                }
+                                else if (seg.OffsetStart > 0)
+                                {
+                                    segments.Insert(0, new ReaperStretchSegment() { OffsetStart = 0, OffsetEnd = seg.OffsetStart, VelocityStart = 1, VelocityEnd = 1 });
+                                }
+
+                                seg = segments[segments.Count-1];
+                                double playbackRateSave = ev.PlaybackRate;
+                                double end = item.Length * playbackRateSave;
+                                double compareEnd = seg.OffsetEnd - end;
+
+                                if (compareEnd > 0.000001)
+                                {
+                                    seg.VelocityEnd = Common.CalculatePointCoordinateInLine(seg.OffsetStart, seg.VelocityStart, seg.OffsetEnd, seg.VelocityEnd, end);
+                                    seg.OffsetEnd = end;
+                                }
+                                else if (compareEnd < -0.000001)
+                                {
+                                    segments.Add(new ReaperStretchSegment() { OffsetStart = seg.OffsetEnd, OffsetEnd = end, VelocityStart = 1, VelocityEnd = 1 });
+                                    
+                                }
+
+                                if (addVideoStreams)
+                                {
+                                    UltraPasteCommon.myVegas.Project.AddMissingStreams(ev, out List<VideoEvent> vEvents);
+                                    l.AddRange(vEvents);
+
+                                    foreach (VideoEvent vEvent in vEvents)
+                                    {
+                                        Envelope en = new Envelope(EnvelopeType.Velocity);
+                                        vEvent.Envelopes.Add(en);
+                                        foreach (ReaperStretchSegment segment in segments)
+                                        {
+                                            Timecode t = Timecode.FromSeconds(segment.OffsetStart / playbackRateSave);
+                                            double value = segment.VelocityStart;
+                                            EnvelopePoint point = en.Points.GetPointAtX(t);
+                                            if (segment.OffsetStart == 0)
+                                            {
+                                                point.Y = value;
+                                            }
+                                            else
+                                            {
+                                                    if (point != null)
+                                                    {
+                                                        t += Timecode.FromNanos(1);
+                                                    }
+                                                    point = en.Points.GetPointAtX(t);
+                                                    if (point != null)
+                                                    {
+                                                        point.Y = value;
+                                                    }
+                                                    else
+                                                    {
+                                                        point = new EnvelopePoint(t, value);
+                                                        en.Points.Add(point);
+                                                    }
+
+                                            }
+                                            point.Curve = CurveType.Linear;
+
+                                            t = Timecode.FromSeconds(segment.OffsetEnd / playbackRateSave);
+
+                                            if (t > vEvent.End)
+                                            {
+                                                continue;
+                                            }
+
+                                            value = segment.VelocityEnd;
+                                            point = en.Points.GetPointAtX(t);
+                                            if (point != null)
+                                            {
+                                                point.Y = value;
+                                            }
+                                            else
+                                            {
+                                                point = new EnvelopePoint(t, value);
+                                                en.Points.Add(point);
+                                            }
+                                            point.Curve = CurveType.Linear;
+                                         }
+                                    }
+                                }
+
+                                TrackEvent current = null;
+                                Timecode lastLength = null;
+
+                                List<TrackEvent> splitedEvents = new List<TrackEvent>();
+                                foreach (ReaperStretchSegment segment in segments)
+                                {
+                                    if (current == null)
+                                    {
+                                        current = ev;
+
+                                    }
+                                    else
+                                    {
+                                        if (current.Length <= lastLength)
+                                        {
+                                            current.Length = lastLength + Timecode.FromSeconds(1);
+                                        }
+                                        current = current.Split(lastLength);
+                                    }
+
+                                    lastLength = Timecode.FromSeconds(segment.OffsetLength / playbackRateSave);
+                                    current.AdjustPlaybackRate(playbackRateSave * segment.VelocityAverage, true);
+                                    splitedEvents.Add(current);
+                                }
+                                current.End = ev.Start + Timecode.FromSeconds(item.Length);
+                                Timecode extendTime = Timecode.FromMilliseconds(25);
+                                foreach (TrackEvent se in splitedEvents)
+                                {
+                                    Timecode endSave = se.End;
+                                    if (se != ev)
+                                    {
+                                        se.Start -= extendTime;
+                                        l.Add(se);
+                                    }
+                                    se.End = endSave;
+                                    if (se != current)
+                                    {
+                                        se.End += extendTime;
+                                    }
+                                }
+                            }
                         }
 
                         List<ReaperEnvelope> envs = new List<ReaperEnvelope>();
@@ -532,30 +691,16 @@ namespace UltraPaste
                             }
                             pointLast.Curve = CurveType.None;
                         }
-                        if (item.Takes != null)
-                        {
-                            foreach (ReaperTake t in item.Takes)
-                            {
-                                Media m = UltraPasteCommon.myVegas.GetValidMedia(t.Source.FilePath);
-                                if (m?.HasAudio() != true)
-                                {
-                                    continue;
-                                }
-                                AudioStream ms = m.GetAudioStreamByIndex(0);
-                                Take tk = ev.AddTake(ms, false);
-                                tk.Offset = Timecode.FromSeconds(t.SOffs);
-                                if (t.Selected)
-                                {
-                                    ev.ActiveTake = tk;
-                                }
-                            }
-                        }
                         if (lastTrack == null || ev.Track.Index > lastTrack.Index)
                         {
                             lastTrack = ev.Track;
                         }
                     }
-                    l.AddRange(evs);
+
+                    if (addVideoStreams)
+                    {
+                        l.AddRange(UltraPasteCommon.myVegas.Project.AddMissingStreams(evs, MediaType.Video));
+                    }
                 }
                 lastTrack.Selected = false;
             }
@@ -600,11 +745,11 @@ namespace UltraPaste
         }
 
 
-        public class ReaperItem : ReaperTake, IComparable<ReaperItem>
+        public class ReaperItem : ReaperTake
         {
-            public double[] Position { get; set; }
-            public double[] SnapOffs { get; set; }
-            public double[] Length { get; set; }
+            public double Position { get; set; }
+            public double SnapOffs { get; set; }
+            public double Length { get; set; }
             public bool Loop { get; set; }
             public bool AllTakes { get; set; }
             public double[] FadeIn { get; set; }
@@ -616,20 +761,11 @@ namespace UltraPaste
 
             public ReaperItem()
             {
-                Position = new double[2];
-                SnapOffs = new double[2];
-                Length = new double[2];
                 FadeIn = new double[7];
                 FadeOut = new double[7];
                 Mute = new int[2];
                 Envelopes = new List<ReaperEnvelope>();
                 Takes = new List<ReaperTake>();
-            }
-
-            public int CompareTo(ReaperItem other)
-            {
-                return (this.Position == null || other.Position == null || this.Position.Length == 0 || other.Position.Length == 0 || this.Position[0] == other.Position[0]) ? 0
-                        : this.Position[0] > other.Position[0] ? 1 : -1;
             }
         }
 
@@ -641,6 +777,7 @@ namespace UltraPaste
             public double SOffs { get; set; }
             public double[] PlayRate { get; set; }
             public int ChanMode { get; set; }
+            public ReaperStretchSegments StretchSegments { get; set; }
             public ReaperSource Source { get; set; }
 
             public ReaperTake()
@@ -648,6 +785,7 @@ namespace UltraPaste
                 Selected = false;
                 VolPan = new double[] { 1, 0, 1, -1 };
                 PlayRate = new double[] { 1, 1, 0, -1, 0, 0.0025 };
+                StretchSegments = new ReaperStretchSegments();
                 Source = new ReaperSource();
             }
         }
@@ -690,6 +828,60 @@ namespace UltraPaste
             public double StartPos { get; set; }
             public double Overlap { get; set; }
             public ReaperSource Source { get; set; }
+        }
+
+        public class ReaperStretchSegments : List<ReaperStretchSegment>
+        {
+            public static ReaperStretchSegments GetFromMarkers(List<ReaperStretchMarker> markers)
+            {
+                ReaperStretchSegments segments = new ReaperStretchSegments();
+                if (markers == null || markers.Count < 2)
+                {
+                    return segments;
+                }
+                ReaperStretchSegment currentSegment = null;
+                ReaperStretchMarker lastMarker = null;
+                foreach (ReaperStretchMarker marker in markers)
+                {
+                    if (currentSegment != null)
+                    {
+                        currentSegment.OffsetEnd = marker.Offset;
+                        double velocityAverage = (marker.Position - lastMarker.Position) / currentSegment.OffsetLength; // (v_Start + v_End) / 2
+                        double velocityHalf = lastMarker.VelocityChange * velocityAverage; // (v_End - v_Start) / (v_Start + v_End) * (v_Start + v_End) / 2 = (v_End - v_Start) / 2
+                        currentSegment.VelocityStart = velocityAverage - velocityHalf;
+                        currentSegment.VelocityEnd = velocityAverage + velocityHalf;
+                        segments.Add(currentSegment);
+                    }
+
+                    currentSegment = new ReaperStretchSegment { OffsetStart = marker.Offset };
+                    lastMarker = marker;
+                }
+                return segments;
+            }
+        }
+
+        public class ReaperStretchSegment
+        {
+            public double OffsetStart { get; set; }
+            public double OffsetEnd { get; set; }
+            public double OffsetLength { get { return OffsetEnd - OffsetStart; } }
+            public double VelocityStart { get; set; }
+            public double VelocityEnd { get; set; }
+            public double VelocityAverage { get { return (VelocityStart + VelocityEnd) / 2; } }
+        }
+
+        public class ReaperStretchMarker
+        {
+            public double Offset { get; set; }
+            public double Position { get; set; }
+            public double VelocityChange { get; set; } // (v_End - v_Start) / (v_Start + v_End)
+
+            public ReaperStretchMarker(double offset, double position, double velocityChange)
+            {
+                Offset = offset;
+                Position = position;
+                VelocityChange = velocityChange;
+            }
         }
 
         public static class Parser
@@ -920,7 +1112,8 @@ namespace UltraPaste
                     case "ITEM":
                         {
                             ReaperItem item = new ReaperItem();
-                            ReaperTake currentTake = (ReaperTake)item;
+                            ReaperTake currentTake = item;
+                            List<ReaperStretchMarker> stretchMarkers = new List<ReaperStretchMarker>();
                             foreach (string line in block.Lines)
                             {
                                 string[] tokens = line.Split(' ');
@@ -931,13 +1124,13 @@ namespace UltraPaste
                                 switch (tokens[0].ToUpper())
                                 {
                                     case "POSITION":
-                                        item.Position = ParseDoubleArray(tokens);
+                                        item.Position = double.Parse(tokens[1]);
                                         break;
                                     case "SNAPOFFS":
-                                        item.SnapOffs = ParseDoubleArray(tokens);
+                                        item.SnapOffs = double.Parse(tokens[1]);
                                         break;
                                     case "LENGTH":
-                                        item.Length = ParseDoubleArray(tokens);
+                                        item.Length = double.Parse(tokens[1]);
                                         break;
                                     case "LOOP":
                                         item.Loop = int.Parse(tokens[1]) != 0;
@@ -956,6 +1149,12 @@ namespace UltraPaste
                                         break;
                                     case "SEL":
                                         item.Selected = int.Parse(tokens[1]) != 0;
+                                        break;
+                                    case "SM":
+                                        foreach (double[] arr in ParseDoubleArrayWithSeparator(tokens, "+"))
+                                        {
+                                            stretchMarkers.Add(new ReaperStretchMarker(arr[0], arr[1], arr.Length > 1 ? arr[2] : 0));
+                                        }
                                         break;
                                     case "TAKE":
                                         currentTake = new ReaperTake();
@@ -984,7 +1183,8 @@ namespace UltraPaste
                                         break;
                                 }
                             }
-                            currentTake = item as ReaperTake;
+                            item.StretchSegments = ReaperStretchSegments.GetFromMarkers(stretchMarkers);
+                            currentTake = item;
                             int takeNum = -1;
                             foreach (ReaperBlock child in block.Children)
                             {
@@ -1097,6 +1297,29 @@ namespace UltraPaste
                     values[i - 1] = double.Parse(tokens[i], CultureInfo.InvariantCulture);
                 }
                 return values;
+            }
+
+            private static List<double[]> ParseDoubleArrayWithSeparator(string[] tokens, string separator)
+            {
+                List<double[]> l = new List<double[]>();
+                List<double> doubles = new List<double>();
+                for (int i = 1; i < tokens.Length; i++)
+                {
+                    if (tokens[i] != separator)
+                    {
+                        doubles.Add(double.Parse(tokens[i], CultureInfo.InvariantCulture));
+                    }
+                    else if(doubles.Count > 0)
+                    {
+                        l.Add(doubles.ToArray());
+                        doubles = new List<double>();
+                    }
+                }
+                if (doubles.Count > 0)
+                {
+                    l.Add(doubles.ToArray());
+                }
+                return l;
             }
 
             private static int[] ParseIntArray(string[] tokens)
