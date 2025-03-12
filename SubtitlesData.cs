@@ -27,16 +27,14 @@ namespace UltraPaste
             }
         }
 
-        public List<TrackEvent> GenerateEventsToVegas(Timecode start, int type = 0)
+        public List<VideoEvent> GenerateEventsToVegas(Timecode start, int type = 0, string presetName = null)
         {
-            List<TrackEvent> evs = new List<TrackEvent>();
+            List<VideoEvent> evs = new List<VideoEvent>();
             foreach (Subtitle subtitle in Subtitles)
             {
                 Timecode subStart = Timecode.FromMilliseconds(subtitle.Start.TotalMilliseconds) + start, subLength = Timecode.FromMilliseconds(subtitle.End.TotalMilliseconds - subtitle.Start.TotalMilliseconds);
                 string text = string.Join("\n", subtitle.TextLines.ToArray());
-                List<VideoEvent> vEvents = type == 1 ? TextMediaGenerator.GenerateProTypeTitlerEvents(subStart, subLength, text, null, true)
-                                         : type == 2 ?       TextMediaGenerator.GenerateTextOfxEvents(subStart, subLength, text, null, true) 
-                                                     : TextMediaGenerator.GenerateTitlesAndTextEvents(subStart, subLength, text, null, true);
+                List<VideoEvent> vEvents = TextMediaGenerator.GenerateTextEvents(subStart, subLength, text, type, presetName);
                 evs.AddRange(vEvents);
             }
             return evs;

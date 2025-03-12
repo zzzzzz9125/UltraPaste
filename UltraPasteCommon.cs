@@ -131,13 +131,13 @@ namespace UltraPaste
                         else if (ext == ".rpp")
                         {
                             ReaperData rd = ReaperData.Parser.Parse(path);
-                            addedEvents = new List<TrackEvent>();
-                            addedEvents.AddRange(rd.GenerateEventsToVegas(startTime, true, true));
+                            addedEvents = rd.GenerateEventsToVegas(startTime, true, true);
                         }
                         else if (ext == ".srt" || ext == ".lrc")
                         {
                             SubtitlesData subtitles = SubtitlesData.Parser.Parse(path);
-                            addedEvents = subtitles.GenerateEventsToVegas(startTime, 1);
+                            addedEvents = new List<TrackEvent>();
+                            addedEvents.AddRange(subtitles.GenerateEventsToVegas(startTime, 2));
                             List<Region> regions = subtitles.GenerateRegionsToVegas(startTime);
                             if (regions.Count > 0)
                             {
@@ -193,13 +193,60 @@ namespace UltraPaste
                         mediaList = myVegas.GetValidMedia(paths);
                     }
 
-                    Timecode singleLength = evs.Count > 0 || mediaList.Count == 0 ? null : Timecode.FromNanos(length.Nanos / mediaList.Count);
-                    foreach (Media media in mediaList)
+                    int importMethod = 0;
+                    Timecode singleLength = evs.Count > 0 || mediaList.Count == 0 ? null : importMethod == 0 ? Timecode.FromNanos(length.Nanos / mediaList.Count) : length;
+                    if (importMethod == 2)
                     {
-                        List<TrackEvent> addedEvents = myVegas.Project.GenerateEvents<TrackEvent>(media, startTime, singleLength, true);
-                        addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents));
-                        startTime = addedEvents.GetEndTimeFromEvents();
-                        evs.AddRange(addedEvents);
+                        List<TrackEvent> evsAsTake = myVegas.Project.GetSelectedEvents<TrackEvent>();
+
+                        Timecode maxLength = new Timecode(0);
+                        foreach (Media media in mediaList)
+                        {
+                            if (maxLength < media.Length)
+                            {
+                                maxLength = media.Length;
+                            }
+                        }
+                        foreach (Media media in mediaList)
+                        {
+                            bool success = false;
+                            foreach (TrackEvent ev in evsAsTake)
+                            {
+                                success = ev.AddTake(media) != null || success;
+                            }
+
+                            if (success)
+                            {
+                                continue;
+                            }
+
+                            List<TrackEvent> addedEvents = myVegas.Project.GenerateEvents<TrackEvent>(media, startTime, singleLength ?? maxLength, false);
+                            addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents));
+                            evsAsTake.AddRange(addedEvents);
+                            evs.AddRange(addedEvents);
+                        }
+                    }
+                    else
+                    {
+                        foreach (Media media in mediaList)
+                        {
+
+                            List<TrackEvent> addedEvents = myVegas.Project.GenerateEvents<TrackEvent>(media, startTime, singleLength, true);
+                            addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents));
+                            if (importMethod == 1)
+                            {
+                                foreach (TrackEvent ev in addedEvents)
+                                {
+                                    ev.Track.Selected = false;
+                                }
+                            }
+                            else
+                            {
+                                startTime = addedEvents.GetEndTimeFromEvents();
+                            }
+
+                            evs.AddRange(addedEvents);
+                        }
                     }
                 }
                 else
@@ -251,7 +298,7 @@ namespace UltraPaste
                         else if (Clipboard.ContainsText())
                         {
                             string str = Clipboard.GetText();
-                            evs.AddRange(TextMediaGenerator.GenerateTitlesAndTextEvents(start, length, str, null, true));
+                            evs.AddRange(TextMediaGenerator.GenerateTextEvents(start, length, str, 0, null, false));
                             success = true;
                         }
 

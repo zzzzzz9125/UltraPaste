@@ -6,7 +6,6 @@ using Sony.Vegas;
 
 using System;
 using System.Collections.Generic;
-using System.IO.Pipes;
 
 namespace UltraPaste
 {
@@ -74,8 +73,6 @@ namespace UltraPaste
                 }
             }
 
-            Dictionary<AudioTrack, VideoTrack> audioVideoPair = new Dictionary<AudioTrack, VideoTrack>();
-
             foreach (Track myTrack in selectedTracks)
             {
                 if ((typeof(T) == typeof(VideoEvent) && !myTrack.IsVideo()) || (typeof(T) == typeof(AudioEvent) && !myTrack.IsAudio()))
@@ -83,43 +80,47 @@ namespace UltraPaste
                     continue;
                 }
 
-                T ev = null;
-                MediaStream ms = null;
 
-                if (myTrack.IsVideo())
-                {
-                    ev = (T)(TrackEvent)new VideoEvent(project, start, length, null);
-                    if (media != null && media.HasVideo())
-                    {
-                        ms = media.GetVideoStreamByIndex(0);
-                    }
-                }
-                else if (myTrack.IsAudio())
-                {
-                    if (audioVideoPair.ContainsKey((AudioTrack)myTrack))
-                    {
-                        continue;
-                    }
-                    ev = (T)(TrackEvent)new AudioEvent(project, start, length, null);
-                    if (media != null && media.HasAudio())
-                    {
-                        ms = media.GetAudioStreamByIndex(0);
-                    }
-                }
-
+                T ev = (T)(myTrack.IsVideo() ? (TrackEvent)new VideoEvent(project, start, length, null) : new AudioEvent(project, start, length, null));
                 if (ev == null)
                 {
                     continue;
                 }
+
                 myTrack.Events.Add(ev);
-                if (ms != null)
-                {
-                    ev.AddTake(ms);
-                }
+                ev.AddTake(media);
                 l.Add(ev);
             }
 
+            if (l.Count > 1)
+            {
+                TrackEventGroup g = l[0].Group;
+                if (g == null)
+                {
+                    g = new TrackEventGroup();
+                    project.Groups.Add(g);
+                    g.Add(l[0]);
+                }
+                foreach (TrackEvent ev in l)
+                {
+                    if (!g.Contains(ev))
+                    {
+                        g.Add(ev);
+                    }
+                }
+            }
+
             return l;
+        }
+
+        public static Take AddTake(this TrackEvent ev, Media media, bool makeActive = true, string name = null)
+        {
+            MediaStream ms = (ev != null && media != null && (ev.IsVideo() ? media.HasVideo() : media.HasAudio())) ? (ev.IsVideo() ? (MediaStream)media.GetVideoStreamByIndex(0) : media.GetAudioStreamByIndex(0)) : null;
+            if (ms == null)
+            {
+                return null;
+            }
+            return ev.AddTake(ms, makeActive, name);
         }
 
         public static List<TrackEvent> AddMissingStreams<T>(this Project project, IEnumerable<T> evs, MediaType type = MediaType.Unknown, bool reverse = false) where T : TrackEvent
@@ -131,7 +132,6 @@ namespace UltraPaste
             }
             return l;
         }
-
 
         public static List<TrackEvent> AddMissingStreams<T>(this Project project, T ev, MediaType type = MediaType.Unknown, bool reverse = false) where T : TrackEvent
         {

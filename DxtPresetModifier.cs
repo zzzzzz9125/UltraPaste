@@ -8,15 +8,17 @@ using System;
 using System.IO;
 using System.Text;
 using Microsoft.Win32;
+using System.Collections.Generic;
 
 namespace UltraPaste
 {
     public static class DxtPresetModifier
     {
         public static string RoamingPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        public static string FxPresetsPath = Path.Combine(Common.VegasVersion > 13 ? Path.Combine(RoamingPath, "VEGAS", "FX Presets") : Path.Combine(RoamingPath, "Sony", "VEGAS", "FX Presets"));
         public static RegistryKey DxtReg = Registry.CurrentUser.CreateSubKey(Path.Combine("Software", "DXTransform", "Presets"));
 
-        public static void SaveDxtEffectPreset(this PlugInNode plugIn, string presetName, string xmlString)
+        public static void SaveDxtEffectPresetXml(this PlugInNode plugIn, string presetName, string xmlString)
         {
             if (plugIn == null || plugIn.IsOFX)
             {
@@ -24,7 +26,7 @@ namespace UltraPaste
             }
 
             RegistryKey myReg = DxtReg.CreateSubKey(plugIn.UniqueID);
-            string filePath = (string)myReg.GetValue(presetName) ?? Path.Combine(Common.VegasVersion > 13 ? Path.Combine(RoamingPath, "VEGAS", "FX Presets") : Path.Combine(RoamingPath, "Sony", "VEGAS", "FX Presets"), plugIn.UniqueID, presetName + ".dxp");
+            string filePath = (string)myReg.GetValue(presetName) ?? Path.Combine(FxPresetsPath, plugIn.UniqueID, presetName + ".dxp");
             if (myReg.GetValue(presetName) == null)
             {
                 myReg.SetValue(presetName, filePath);
@@ -41,7 +43,9 @@ namespace UltraPaste
                 Array.Reverse(lengthBytes);
             }
 
-            data = data.InsertBytes(lengthBytes, 0);
+            List<byte> l = new List<byte>(lengthBytes);
+            l.AddRange(data);
+            data = l.ToArray();
 
             using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
             {
@@ -49,16 +53,27 @@ namespace UltraPaste
             }
         }
 
-        public static byte[] InsertBytes(this byte[] data1, byte[] data2, int insertPos, int extendLength = 0)
+        public static void SaveDxtEffectPreset(this PlugInNode plugIn, string presetName, byte[] data)
         {
-            byte[] newData = new byte[data1.Length + data2.Length + extendLength];
-            Array.Copy(data1, 0, newData, 0, insertPos);
-            Array.Copy(data2, 0, newData, insertPos, data2.Length);
-            Array.Copy(data1, insertPos, newData, data2.Length + insertPos, data1.Length - insertPos);
-            return newData;
+            if (plugIn == null || plugIn.IsOFX || string.IsNullOrEmpty(presetName))
+            {
+                return;
+            }
+
+            DxtReg.CreateSubKey(plugIn.UniqueID).SetValue(presetName, data);
         }
 
-        public static string LoadDxtEffectPreset(this PlugInNode plugIn, string presetName)
+        public static void DeleteDxtEffectPreset(this PlugInNode plugIn, string presetName)
+        {
+            if (plugIn == null || plugIn.IsOFX || string.IsNullOrEmpty(presetName))
+            {
+                return;
+            }
+
+            DxtReg.CreateSubKey(plugIn.UniqueID).DeleteValue(presetName);
+        }
+
+        public static byte[] LoadDxtEffectPreset(this PlugInNode plugIn, string presetName)
         {
             if (plugIn == null || plugIn.IsOFX || string.IsNullOrEmpty(presetName))
             {
@@ -66,10 +81,11 @@ namespace UltraPaste
             }
 
             RegistryKey myReg = DxtReg.CreateSubKey(plugIn.UniqueID);
-            string filePath = (string)myReg.GetValue(presetName);
+            string filePath = myReg.GetValue(presetName) as string;
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
-                return null;
+                
+                return myReg.GetValue(presetName) as byte[] ?? null;
             }
 
             byte[] data = null;
@@ -87,7 +103,17 @@ namespace UltraPaste
 
             byte[] newData = new byte[data.Length - 4];
             Array.Copy(data, 4, newData, 0, newData.Length);
-            return Encoding.UTF8.GetString(newData);
+            return newData;
+        }
+
+        public static string[] GetValidPresets(this PlugInNode plugIn)
+        {
+            if (plugIn == null || plugIn.IsOFX)
+            {
+                return new string [0];
+            }
+
+            return DxtReg.OpenSubKey(plugIn.UniqueID)?.GetSubKeyNames() ?? new string[0];
         }
     }
 }

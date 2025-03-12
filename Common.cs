@@ -413,6 +413,11 @@ public static class Common
         return l;
     }
 
+    public static T GetFirstSelectedEvent<T>(this Project project) where T : TrackEvent
+    {
+        List<T> l = project.GetSelectedEvents<T>();
+        return l.Count > 0 ? l[0] : null;
+    }
 
     public static Timecode GetEndTimeFromMarkers<T>(this IEnumerable<T> markers) where T : Marker
     {

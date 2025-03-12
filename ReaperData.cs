@@ -7,10 +7,9 @@ using Sony.Vegas;
 using System;
 using System.IO;
 using System.Text;
+using System.Linq;
 using System.Globalization;
 using System.Collections.Generic;
-using System.Linq;
-using System.Windows.Forms;
 
 namespace UltraPaste
 {
