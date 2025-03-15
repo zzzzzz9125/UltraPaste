@@ -44,14 +44,14 @@
       <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\CorePrimitives.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="ScriptPortal.MediaSoftware.Skins, Version=21.0.0.208, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
+    <Reference Include="ScriptPortal.MediaSoftware.Skins, Version=22.0.0.239, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\ScriptPortal.MediaSoftware.Skins.dll</HintPath>
     </Reference>
     <Reference Include="ScriptPortal.MediaSoftware.TextGen.CoreGraphics">
       <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\ScriptPortal.MediaSoftware.TextGen.CoreGraphics.dll</HintPath>
     </Reference>
-    <Reference Include="ScriptPortal.Vegas, Version=23.0.0.112, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
+    <Reference Include="ScriptPortal.Vegas, Version=22.0.0.239, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\ScriptPortal.Vegas.dll</HintPath>
     </Reference>

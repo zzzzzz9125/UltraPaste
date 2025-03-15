@@ -23,6 +23,24 @@ namespace UltraPaste
             return vegas.Project.GenerateEvents<T>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
         }
 
+        public static List<TrackEvent> GenerateEvents(this Project project, Media media, Timecode start, Timecode length = null, MediaType type = MediaType.Unknown, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
+        {
+            List<TrackEvent> l = new List<TrackEvent>();
+            if (type == MediaType.Video)
+            {
+                l.AddRange(project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex));
+            }
+            else if (type == MediaType.Audio)
+            {
+                l.AddRange(project.GenerateEvents<AudioEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex));
+            }
+            else
+            {
+                l.AddRange(project.GenerateEvents<TrackEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex));
+            }
+            return l;
+        }
+
         // a complex implementation to import Media as Events to Timeline
         // when media is null, it will generate blank events
         public static List<T> GenerateEvents<T>(this Project project, Media media, Timecode start, Timecode length = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1) where T : TrackEvent
@@ -40,6 +58,7 @@ namespace UltraPaste
             List<Track> selectedTracks = new List<Track>();
 
             int trackCount = useMultipleSelectedTracks ? 0 : 1;
+
             if (isVideoOnly)
             {
                 selectedTracks.AddRange(project.GetSelectedTracks<VideoTrack>(trackCount));

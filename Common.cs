@@ -27,6 +27,7 @@ public static class S
 public static class Common
 {
     public static int VegasVersion = FileVersionInfo.GetVersionInfo(Application.ExecutablePath).FileMajorPart;
+    public static string RoamingPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
     public static double CalculatePointCoordinateInLine(double x1, double y1, double x2, double y2, double x3)
     {
@@ -126,7 +127,7 @@ public static class Common
     }
 
     // get all valid paths, and output the extension when all files have a uniform extension
-    public static List<string> GetFilePathsFromPathList(this System.Collections.Specialized.StringCollection pathList, out string uniformExtension)
+    public static List<string> GetFilePathsFromPathList(this System.Collections.Specialized.StringCollection pathList)
     {
         List<string> filePaths = new List<string>();
         foreach (string path in pathList)
@@ -148,11 +149,17 @@ public static class Common
                 }
             }
         }
-        uniformExtension = null;
-        if (filePaths.Count > 0)
+
+        return filePaths;
+    }
+
+    public static string GetUniformExtention(this List<string> paths)
+    {
+        string uniformExtension = null;
+        if (paths?.Count > 0)
         {
-            uniformExtension = Path.GetExtension(filePaths[0]).ToLower();
-            foreach (string path in filePaths)
+            uniformExtension = Path.GetExtension(paths[0]).ToLower();
+            foreach (string path in paths)
             {
                 if (Path.GetExtension(path).ToLower() != uniformExtension)
                 {
@@ -161,12 +168,12 @@ public static class Common
                 }
             }
         }
-        return filePaths;
+        return uniformExtension;
     }
 
     public static bool IsSameTo(this System.Drawing.Image img1, System.Drawing.Image img2)
     {
-        if (img2 == null || img1.RawFormat.Guid != img2.RawFormat.Guid || img1.Size != img2.Size)
+        if (img1 == null || img2 == null || img1.RawFormat.Guid != img2.RawFormat.Guid || img1.Size != img2.Size)
         {
             return false;
         }
@@ -223,7 +230,20 @@ public static class Common
         }
     }
 
-    public static T DeserializeXml<T>(this string path) where T : new()
+    public static T DeserializeXml<T>(this string context) where T : new()
+    {
+        T t = default;
+
+        using (StringReader sr = new StringReader(context))
+        {
+            XmlSerializer serializer = new XmlSerializer(typeof(T));
+            t = (T)new XmlSerializer(typeof(T)).Deserialize(sr);
+        }
+
+        return t;
+    }
+
+    public static T DeserializeFromFile<T>(this string path) where T : new()
     {
         T t = default;
         if (!File.Exists(path))
@@ -236,6 +256,11 @@ public static class Common
             t = (T)new XmlSerializer(typeof(T)).Deserialize(sr);
         }
         return t;
+    }
+
+    public static T DeepClone<T>(this T t) where T : new()
+    {
+        return t.SerializeXml().DeserializeXml<T>();
     }
 
     // get a mix of modern VEGAS data and Sony one, allowing users to paste between the two
@@ -419,8 +444,12 @@ public static class Common
         return l.Count > 0 ? l[0] : null;
     }
 
-    public static Timecode GetEndTimeFromMarkers<T>(this IEnumerable<T> markers) where T : Marker
+    public static Timecode GetEndTimeFromMarkers<T>(this List<T> markers) where T : Marker
     {
+        if (markers == null || markers.Count == 0)
+        {
+            return null;
+        }
         Timecode end = new Timecode(0);
         foreach (T m in markers)
         {
@@ -434,8 +463,12 @@ public static class Common
         return end;
     }
 
-    public static Timecode GetEndTimeFromEvents<T>(this IEnumerable<T> evs) where T : TrackEvent
+    public static Timecode GetEndTimeFromEvents<T>(this List<T> evs) where T : TrackEvent
     {
+        if (evs == null || evs.Count == 0)
+        {
+            return null;
+        }
         Timecode end = new Timecode(0);
         foreach (T ev in evs)
         {
@@ -445,6 +478,16 @@ public static class Common
             }
         }
         return end;
+    }
+
+    public static void RefreshCursorPosition(this Vegas vegas, Timecode time)
+    {
+        if (time != null && vegas.Transport.CursorPosition != time)
+        {
+            vegas.UpdateUI();
+            vegas.Transport.CursorPosition = time;
+            vegas.Transport.ViewCursor(false);
+        }
     }
 
     public static List<Media> GetValidMedia(this Vegas vegas, IEnumerable<string> paths)

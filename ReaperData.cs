@@ -162,12 +162,12 @@ namespace UltraPaste
             return data;
         }
 
-        public List<TrackEvent> GenerateEventsToVegas(Timecode start, bool closeBegin = true, bool addVideoStreams = true)
+        public List<TrackEvent> GenerateEventsToVegas(Timecode start, bool closeGap = true, bool addVideoStreams = true)
         {
             List<TrackEvent> l = new List<TrackEvent>();
             if (IsFromTrackData)
             {
-                foreach (Track t in UltraPasteCommon.myVegas.Project.Tracks)
+                foreach (Track t in UltraPasteCommon.Vegas.Project.Tracks)
                 {
                     t.Selected = false;
                 }
@@ -178,7 +178,7 @@ namespace UltraPaste
                 start = new Timecode(0);
             }
 
-            if (closeBegin)
+            if (closeGap)
             {
                 Timecode offset = null;
                 foreach (ReaperTrack track in Tracks)
@@ -214,8 +214,8 @@ namespace UltraPaste
             {
                 if (IsFromTrackData)
                 {
-                    AudioTrack trk = new AudioTrack(UltraPasteCommon.myVegas.Project, -1, track.Name);
-                    UltraPasteCommon.myVegas.Project.Tracks.Add(trk);
+                    AudioTrack trk = new AudioTrack(UltraPasteCommon.Vegas.Project, -1, track.Name);
+                    UltraPasteCommon.Vegas.Project.Tracks.Add(trk);
                     if (track.VolPan?.Length > 0)
                     {
                         trk.Volume = (float)track.VolPan[0];
@@ -299,14 +299,14 @@ namespace UltraPaste
                         continue;
                     }
 
-                    Media media = UltraPasteCommon.myVegas.GetValidMedia(item.Source.FilePath);
+                    Media media = UltraPasteCommon.Vegas.GetValidMedia(item.Source.FilePath);
 
                     if (item.Source is ReaperSourceSection)
                     {
                         ReaperSourceSection section = item.Source as ReaperSourceSection;
                         bool reverse = section.Mode > 0;
                         Timecode clipStart = Timecode.FromSeconds(section.StartPos), clipLength = section.Mode == 3 ? media.Length : Timecode.FromSeconds(section.Length);
-                        foreach (Media m in UltraPasteCommon.myVegas.Project.MediaPool)
+                        foreach (Media m in UltraPasteCommon.Vegas.Project.MediaPool)
                         {
                             if (m.IsSubclip())
                             {
@@ -320,11 +320,11 @@ namespace UltraPaste
                         }
                         if (!media.IsSubclip())
                         {
-                            media = new Subclip(UltraPasteCommon.myVegas.Project, section.FilePath, clipStart, clipLength, reverse, null);
+                            media = new Subclip(UltraPasteCommon.Vegas.Project, section.FilePath, clipStart, clipLength, reverse, null);
                         }
                     }
 
-                    List<AudioEvent> evs = UltraPasteCommon.myVegas.Project.GenerateEvents<AudioEvent>(media, start + Timecode.FromSeconds(item.Position), Timecode.FromSeconds(item.Length), false, lastTrack == null ? 0 : (lastTrack.Index + 1));
+                    List<AudioEvent> evs = UltraPasteCommon.Vegas.Project.GenerateEvents<AudioEvent>(media, start + Timecode.FromSeconds(item.Position), Timecode.FromSeconds(item.Length), false, lastTrack == null ? 0 : (lastTrack.Index + 1));
                     l.AddRange(evs);
                     foreach (AudioEvent ev in evs)
                     {
@@ -408,7 +408,7 @@ namespace UltraPaste
                         {
                             foreach (ReaperTake t in item.Takes)
                             {
-                                Media m = UltraPasteCommon.myVegas.GetValidMedia(t.Source.FilePath);
+                                Media m = UltraPasteCommon.Vegas.GetValidMedia(t.Source.FilePath);
                                 if (m?.HasAudio() != true)
                                 {
                                     continue;
@@ -458,7 +458,7 @@ namespace UltraPaste
 
                                 if (addVideoStreams)
                                 {
-                                    UltraPasteCommon.myVegas.Project.AddMissingStreams(ev, out List<VideoEvent> vEvents);
+                                    UltraPasteCommon.Vegas.Project.AddMissingStreams(ev, out List<VideoEvent> vEvents);
                                     l.AddRange(vEvents);
 
                                     foreach (VideoEvent vEvent in vEvents)
@@ -698,7 +698,7 @@ namespace UltraPaste
 
                     if (addVideoStreams)
                     {
-                        l.AddRange(UltraPasteCommon.myVegas.Project.AddMissingStreams(evs, MediaType.Video));
+                        l.AddRange(UltraPasteCommon.Vegas.Project.AddMissingStreams(evs, MediaType.Video));
                     }
                 }
                 lastTrack.Selected = false;
@@ -1152,7 +1152,7 @@ namespace UltraPaste
                                     case "SM":
                                         foreach (double[] arr in ParseDoubleArrayWithSeparator(tokens, "+"))
                                         {
-                                            stretchMarkers.Add(new ReaperStretchMarker(arr[0], arr[1], arr.Length > 1 ? arr[2] : 0));
+                                            stretchMarkers.Add(new ReaperStretchMarker(arr[0], arr[1], arr.Length > 2 ? arr[2] : 0));
                                         }
                                         break;
                                     case "TAKE":

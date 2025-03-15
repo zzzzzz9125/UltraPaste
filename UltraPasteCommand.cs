@@ -17,7 +17,7 @@ namespace UltraPaste
         internal void UltraPasteInit(Vegas vegas, ref List<CustomCommand> CustomCommands)
         {
             myVegas = vegas;
-            UltraPasteCommon.myVegas = vegas;
+            UltraPasteCommon.Vegas = vegas;
             L.Localize();
             CustomCommand cmdParent = new CustomCommand(CommandCategory.Tools, "UltraPaste_Group") { DisplayName = L.UltraPaste };
             CustomCommands.Add(cmdParent);
@@ -66,13 +66,15 @@ namespace UltraPaste
             cmdParent.AddChild(cmdUnifyVegasClipboardData);
             CustomCommands.Add(cmdUnifyVegasClipboardData);
 
+
+
 #if TEST
-            CustomCommand cmdTest = new CustomCommand(CommandCategory.Tools, "UltraPaste_Test");
+            CustomCommand cmdTest = new CustomCommand(CommandCategory.Tools, "UltraPaste_SaveSettings");
             cmdTest.Invoked += delegate (object o, EventArgs e)
             {
                 try
                 {
-
+                    UltraPasteCommon.Settings.SaveToFile();
                 }
                 catch (Exception ex)
                 {
@@ -80,6 +82,23 @@ namespace UltraPaste
                 }
             };
             cmdTest.SetIconFile("UltraPaste.png");
+            cmdParent.AddChild(cmdTest);
+            CustomCommands.Add(cmdTest);
+
+            cmdTest = new CustomCommand(CommandCategory.Tools, "UltraPaste_LoadSettings");
+            cmdTest.Invoked += delegate (object o, EventArgs e)
+            {
+                try
+                {
+                    UltraPasteCommon.Settings = UltraPasteSettings.LoadFromFile();
+                }
+                catch (Exception ex)
+                {
+                    myVegas.ShowError(ex);
+                }
+            };
+            cmdTest.SetIconFile("UltraPaste.png");
+            cmdParent.AddChild(cmdTest);
             CustomCommands.Add(cmdTest);
 #endif
         }

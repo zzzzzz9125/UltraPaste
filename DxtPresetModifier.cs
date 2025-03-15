@@ -14,8 +14,7 @@ namespace UltraPaste
 {
     public static class DxtPresetModifier
     {
-        public static string RoamingPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        public static string FxPresetsPath = Path.Combine(Common.VegasVersion > 13 ? Path.Combine(RoamingPath, "VEGAS", "FX Presets") : Path.Combine(RoamingPath, "Sony", "VEGAS", "FX Presets"));
+        public static string FxPresetsPath = Path.Combine(Common.VegasVersion > 13 ? Path.Combine(Common.RoamingPath, "VEGAS", "FX Presets") : Path.Combine(Common.RoamingPath, "Sony", "VEGAS", "FX Presets"));
         public static RegistryKey DxtReg = Registry.CurrentUser.CreateSubKey(Path.Combine("Software", "DXTransform", "Presets"));
 
         public static void SaveDxtEffectPresetXml(this PlugInNode plugIn, string presetName, string xmlString)

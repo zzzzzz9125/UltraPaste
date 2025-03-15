@@ -12,14 +12,12 @@ using Sony.MediaSoftware.TextGen.CoreGraphics.FilterLibrary;
 using Sony.MediaSoftware.TextGen.CoreGraphics.NodeLibrary.MetaText;
 #endif
 
+using System;
 using System.Linq;
 using System.Text;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
-using System;
-using static UltraPaste.SubtitlesData;
-
 
 namespace UltraPaste
 {
@@ -34,28 +32,28 @@ namespace UltraPaste
         {
             get
             {
-                return UltraPasteCommon.myVegas.Generators.FindChildByUniqueID(UID_PROTYPE_TITLER);
+                return UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_PROTYPE_TITLER);
             }
         }
         public static PlugInNode PlugInTitlesAndText
         {
             get
             {
-                return UltraPasteCommon.myVegas.Generators.FindChildByUniqueID(UID_TITLES_AND_TEXT) ?? UltraPasteCommon.myVegas.Generators.FindChildByUniqueID(UID_TITLES_AND_TEXT_SONY);
+                return UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_TITLES_AND_TEXT) ?? UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_TITLES_AND_TEXT_SONY);
             }
         }
         public static PlugInNode PlugInLegacyText
         {
             get
             {
-                return UltraPasteCommon.myVegas.Generators.FindChildByUniqueID(UID_LEGACY_TEXT);
+                return UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_LEGACY_TEXT);
             }
         }
         public static PlugInNode PlugInTextOfx
         {
             get
             {
-                return UltraPasteCommon.myVegas.Generators.FindChildByUniqueID(UID_TEXT_OFX);
+                return UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_TEXT_OFX);
             }
         }
 
@@ -63,7 +61,7 @@ namespace UltraPaste
 
         public class TextMediaProperties
         {
-            public Size MediaSize = new Size(UltraPasteCommon.myVegas.Project.Video.Width, UltraPasteCommon.myVegas.Project.Video.Height);
+            public Size MediaSize = new Size(UltraPasteCommon.Vegas.Project.Video.Width, UltraPasteCommon.Vegas.Project.Video.Height);
             public double MediaMilliseconds = 5000;
             public string Text = "";
             public string FontName = "Arial";
@@ -216,7 +214,7 @@ namespace UltraPaste
                 changer?.Invoke(titler);
                 string tmpPresetName = string.Format("{0}_Temp", presetName);
                 PlugInProTypeTitler.SaveDxtEffectPresetXml(tmpPresetName, titler.SerializeXml());
-                Media myMedia = Media.CreateInstance(UltraPasteCommon.myVegas.Project, PlugInProTypeTitler);
+                Media myMedia = Media.CreateInstance(UltraPasteCommon.Vegas.Project, PlugInProTypeTitler);
                 myMedia.Generator.Preset = tmpPresetName;
                 PlugInProTypeTitler.DeleteDxtEffectPreset(tmpPresetName);
                 myMedia.GetVideoStreamByIndex(0).Size = MediaSize;
@@ -244,12 +242,12 @@ namespace UltraPaste
                 Text = text,
                 MediaMilliseconds = length.ToMilliseconds()
             };
-            return UltraPasteCommon.myVegas.Project.GenerateEvents<VideoEvent>(properties.GenerateProTypeTitlerMedia(presetName, changer), start, length, useMultipleSelectedTracks, newTrackIndex);
+            return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(properties.GenerateProTypeTitlerMedia(presetName, changer), start, length, useMultipleSelectedTracks, newTrackIndex);
         }
 
         public static List<VideoEvent> GenerateTitlesAndTextEvents(Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
         {
-            Media media = Media.CreateInstance(UltraPasteCommon.myVegas.Project, PlugInTitlesAndText, presetName);
+            Media media = Media.CreateInstance(UltraPasteCommon.Vegas.Project, PlugInTitlesAndText, presetName);
             if (length.Nanos > 0)
             {
                 media.Length = length;
@@ -266,7 +264,7 @@ namespace UltraPaste
                 textPara.Value = rtb.Rtf;
             }
 
-            return UltraPasteCommon.myVegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
+            return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
         }
         public static List<VideoEvent> GenerateLegacyTextEvents(Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
         {
@@ -335,7 +333,7 @@ namespace UltraPaste
 
             string tempPresetName = string.Format("{0}_Temp", presetName);
             PlugInLegacyText.SaveDxtEffectPreset(tempPresetName, data);
-            Media media = Media.CreateInstance(UltraPasteCommon.myVegas.Project, PlugInLegacyText);
+            Media media = Media.CreateInstance(UltraPasteCommon.Vegas.Project, PlugInLegacyText);
             media.Generator.Preset = tempPresetName;
             PlugInLegacyText.DeleteDxtEffectPreset(tempPresetName);
 
@@ -344,7 +342,7 @@ namespace UltraPaste
                 media.Length = length;
             }
 
-            return UltraPasteCommon.myVegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
+            return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
         }
 
         // support for "Text OFX" (see: https://text.openfx.no/)
@@ -354,7 +352,7 @@ namespace UltraPaste
             {
                 return new List<VideoEvent>();
             }
-            Media media = Media.CreateInstance(UltraPasteCommon.myVegas.Project, PlugInTextOfx, presetName);
+            Media media = Media.CreateInstance(UltraPasteCommon.Vegas.Project, PlugInTextOfx, presetName);
             if (length.Nanos > 0)
             {
                 media.Length = length;
@@ -363,7 +361,7 @@ namespace UltraPaste
             (media.Generator.OFXEffect["text"] as OFXStringParameter).Value = text;
             (media.Generator.OFXEffect["font"] as OFXStringParameter).Value = (media.Generator.OFXEffect["name"] as OFXChoiceParameter).Value.Name;
 
-            return UltraPasteCommon.myVegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
+            return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
         }
     }
 }
