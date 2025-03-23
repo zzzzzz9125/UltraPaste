@@ -11,7 +11,7 @@
 **Supported Versions:** Sony VEGAS Pro 13 - Magix VEGAS Pro 22  
 
 ### How to Install
-1. Place all `.dll` files in the extensions folder like:  
+1. Place all files in the extensions folder like:  
    - `C:\ProgramData\Vegas Pro\Application Extensions\`  
    - or `C:\ProgramData\Sony\Vegas Pro\Application Extensions\` for Sony
 
