@@ -10,12 +10,13 @@ using System.Windows.Forms;
 
 namespace UltraPaste
 {
+    using UltraControls;
     public sealed partial class UltraPasteWindow : DockableControl
     {
         public Vegas MyVegas;
 
         public UltraPasteWindow()
-            : base("UltraPaste")
+            : base("UltraPaste_Window")
         {
             InitializeComponent();
             PersistDockWindowState = true;
@@ -28,7 +29,7 @@ namespace UltraPaste
 
         public override Size DefaultFloatingSize
         {
-            get { return new Size(500, 450); }
+            get { return new Size(500, 400); }
         }
 
         protected override void OnLoaded(EventArgs args)
@@ -61,17 +62,11 @@ namespace UltraPaste
 
         private void InitializeComponent()
         {
-#if !Sony
-            Color[] colors = new Color[] { ScriptPortal.MediaSoftware.Skins.Skins.Colors.ButtonFace, ScriptPortal.MediaSoftware.Skins.Skins.Colors.ButtonText };
-#else
-        Color[] colors = new Color[] { Sony.MediaSoftware.Skins.Skins.Colors.ButtonFace, Sony.MediaSoftware.Skins.Skins.Colors.ButtonText };
-#endif
-
             SuspendLayout();
             AutoScaleMode = AutoScaleMode.Font;
             MinimumSize = new Size(433, 172);
-            BackColor = colors[0];
-            ForeColor = colors[1];
+            BackColor = Common.UIColors[0];
+            ForeColor = Common.UIColors[1];
             DisplayName = string.Format("{0} {1}", L.UltraPaste, UltraPasteCommon.VERSION);
             Font = new Font(L.Font, 9);
 
@@ -80,17 +75,56 @@ namespace UltraPaste
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 GrowStyle = TableLayoutPanelGrowStyle.AddRows,
-                ColumnCount = 4,
+                ColumnCount = 2,
                 Dock = DockStyle.Fill
             };
-            l.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            l.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 39));
-            l.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16));
-            l.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
+            l.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            l.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             Controls.Add(l);
+
+            UltraTabControl tab = new UltraTabControl();
+            l.Controls.Add(tab);
+            l.SetColumnSpan(tab, 2);
+
+            tab.TabPages.Add(UltraTabPage.From(UltraTableLayoutPanel.From(UltraPasteCommon.Settings.General, this)));
+            tab.TabPages.Add(UltraTabPage.From(UltraTableLayoutPanel.From(UltraPasteCommon.Settings.ClipboardImage, this)));
+            tab.TabPages.Add(UltraTabPage.From(UltraTableLayoutPanel.From(UltraPasteCommon.Settings.ReaperData, this)));
+            tab.TabPages.Add(UltraTabPage.From(UltraTableLayoutPanel.From(UltraPasteCommon.Settings.PsdImport, this)));
+            tab.TabPages.Add(UltraTabPage.From(UltraTableLayoutPanel.From(UltraPasteCommon.Settings.SubtitlesImport, this)));
+            tab.TabPages.Add(UltraTabPage.From(UltraTableLayoutPanel.From(UltraPasteCommon.Settings.MediaImport, this, true)));
+            tab.TabPages.Add(UltraTabPage.From(UltraTableLayoutPanel.From(UltraPasteCommon.Settings.VegasData, this)));
+
+            tab.SelectedIndex = UltraPasteCommon.Settings.General.LastTabIndex;
+            //tab.MinimumSize = new Size(500, 400);
+
+            Closed += (o, e) =>
+            {
+                if (tab != null)
+                {
+                    UltraPasteCommon.Settings.General.LastTabIndex = tab.SelectedIndex;
+                }
+                UltraPasteCommon.Settings.SaveToFile();
+            };
+
+            SetFocusToMainTrackViewForControlsMouseClick<Button>(this);
 
             ResumeLayout(false);
             PerformLayout();
+        }
+
+        void SetFocusToMainTrackViewForControlsMouseClick<T>(Control ctrl) where T : Control
+        {
+            if (ctrl is T)
+            {
+                ctrl.MouseClick += (o, e) =>
+                {
+                    SetFocusToMainTrackView();
+                };
+            }
+            foreach (Control c in ctrl.Controls)
+            {
+                SetFocusToMainTrackViewForControlsMouseClick<T>(c);
+            }
         }
     }
 }

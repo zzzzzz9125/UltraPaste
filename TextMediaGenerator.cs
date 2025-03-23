@@ -18,43 +18,59 @@ using System.Text;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace UltraPaste
 {
-    public class TextMediaGenerator
+    public static class TextMediaGenerator
     {
-        public const string UID_LEGACY_TEXT = "{0FE8789D-0C47-442A-AFB0-0DAF97669317}";
-        public const string UID_PROTYPE_TITLER = "{53FC0B44-BD58-4716-A90F-3EB43168DE81}";
         public const string UID_TITLES_AND_TEXT = "{Svfx:com.vegascreativesoftware:titlesandtext}";
         public const string UID_TITLES_AND_TEXT_SONY = "{Svfx:com.sonycreativesoftware:titlesandtext}";
+        public const string UID_PROTYPE_TITLER = "{53FC0B44-BD58-4716-A90F-3EB43168DE81}";
+        public const string UID_LEGACY_TEXT = "{0FE8789D-0C47-442A-AFB0-0DAF97669317}";
         public const string UID_TEXT_OFX = "{Svfx:no.openfx.Text}";
-        public static PlugInNode PlugInProTypeTitler
+        public const string UID_SOLID_COLOR = "{Svfx:com.vegascreativesoftware:solidcolor}";
+        public const string UID_SOLID_COLOR_SONY = "{Svfx:com.sonycreativesoftware:solidcolor}";
+        public const string UID_IGNITE_PRO_TEXT = "{Svfx:com.FXHOME.HitFilm.Text}";
+        public const string UID_IGNITE_PRO_TEXT_360 = "{Svfx:com.FXHOME.HitFilm.360Text}";
+        public const string UID_UNIVERSE_TEXT_TYPOGRAPHIC = "{Svfx:com.redgiantsoftware.Universe_Text_Typographic_OFX}";
+        public const string UID_UNIVERSE_TEXT_HACKER = "{Svfx:com.redgiantsoftware.Universe_Text_Hacker_Text_OFX}";
+        public const string UID_OFX_CLOCK = "{Svfx:de.hlinke.ofxclock}";
+        public static PlugInNode PlugInTitlesAndText = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_TITLES_AND_TEXT) ?? UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_TITLES_AND_TEXT_SONY);
+        public static PlugInNode PlugInProTypeTitler = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_PROTYPE_TITLER);
+        public static PlugInNode PlugInLegacyText = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_LEGACY_TEXT);
+        public static PlugInNode PlugInTextOfx = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_TEXT_OFX);
+        public static PlugInNode PlugInSolidColor = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_SOLID_COLOR) ?? UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_SOLID_COLOR_SONY);
+        public static PlugInNode PlugInIgniteProText = UltraPasteCommon.Vegas?.VideoFX.FindChildByUniqueID(UID_IGNITE_PRO_TEXT);
+        public static PlugInNode PlugInIgniteProText360 = UltraPasteCommon.Vegas?.VideoFX.FindChildByUniqueID(UID_IGNITE_PRO_TEXT_360);
+        public static PlugInNode PlugInUniverseTextTypographic = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_UNIVERSE_TEXT_TYPOGRAPHIC);
+        public static PlugInNode PlugInUniverseTextHacker = UltraPasteCommon.Vegas?.VideoFX.FindChildByUniqueID(UID_UNIVERSE_TEXT_HACKER);
+        public static PlugInNode PlugInOfxClock = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_OFX_CLOCK);
+        public static PlugInNode[] TextPlugIns = new PlugInNode[] { PlugInTitlesAndText, PlugInProTypeTitler, PlugInLegacyText, PlugInTextOfx, PlugInIgniteProText, PlugInIgniteProText360, PlugInUniverseTextTypographic, PlugInUniverseTextHacker, PlugInOfxClock };
+        public static Dictionary<int, string> ValidTextNumbersAndNames
         {
             get
             {
-                return UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_PROTYPE_TITLER);
+                Dictionary<int, string> dic = new Dictionary<int, string>();
+                for (int i = 0; i < TextPlugIns.Length; i++)
+                {
+                    if (TextPlugIns[i] != null)
+                    {
+                        dic.Add(i, TextPlugIns[i].Name);
+                    }
+                }
+                return dic;
             }
         }
-        public static PlugInNode PlugInTitlesAndText
+
+        public static bool IsGenerator(this PlugInNode p)
         {
-            get
+            if (p == null)
             {
-                return UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_TITLES_AND_TEXT) ?? UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_TITLES_AND_TEXT_SONY);
+                return false;
             }
-        }
-        public static PlugInNode PlugInLegacyText
-        {
-            get
-            {
-                return UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_LEGACY_TEXT);
-            }
-        }
-        public static PlugInNode PlugInTextOfx
-        {
-            get
-            {
-                return UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_TEXT_OFX);
-            }
+            return UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(p.UniqueID) != null;
         }
 
         public delegate void TitlerChanger(Titler titler);
@@ -62,7 +78,7 @@ namespace UltraPaste
         public class TextMediaProperties
         {
             public Size MediaSize = new Size(UltraPasteCommon.Vegas.Project.Video.Width, UltraPasteCommon.Vegas.Project.Video.Height);
-            public double MediaMilliseconds = 5000;
+            public double MediaSeconds = UltraPasteCommon.Settings.SubtitlesImport.DefaultLengthSeconds;
             public string Text = "";
             public string FontName = "Arial";
             public double FontSize = 48;
@@ -218,9 +234,9 @@ namespace UltraPaste
                 myMedia.Generator.Preset = tmpPresetName;
                 PlugInProTypeTitler.DeleteDxtEffectPreset(tmpPresetName);
                 myMedia.GetVideoStreamByIndex(0).Size = MediaSize;
-                if (MediaMilliseconds > 0)
+                if (MediaSeconds > 0)
                 {
-                    myMedia.Length = Timecode.FromMilliseconds(MediaMilliseconds);
+                    myMedia.Length = Timecode.FromSeconds(MediaSeconds);
                 }
                 return myMedia;
             }
@@ -228,11 +244,21 @@ namespace UltraPaste
 
         public static List<VideoEvent> GenerateTextEvents(Timecode start, Timecode length = null, string text = null, int type = 0, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
         {
-            List<VideoEvent> evs = type == 1 ? GenerateProTypeTitlerEvents(start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex)
-                                 : type == 2 ?    GenerateLegacyTextEvents(start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex)
-                                 : type == 3 ?       GenerateTextOfxEvents(start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex)
-                                             : GenerateTitlesAndTextEvents(start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex);
-            return evs;
+            if (type > TextPlugIns.Length - 1)
+            {
+                return new List<VideoEvent>();
+            }
+            PlugInNode plug = TextPlugIns[type];
+            if (plug.IsOFX)
+            {
+                return GenerateOfxEvents(plug, start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex);
+            }
+            else
+            {
+                return plug.UniqueID == PlugInProTypeTitler.UniqueID ? GenerateProTypeTitlerEvents(start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex)
+                     : plug.UniqueID == PlugInLegacyText.UniqueID    ? GenerateLegacyTextEvents   (start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex) : new List<VideoEvent>();
+            }
+
         }
 
         public static List<VideoEvent> GenerateProTypeTitlerEvents(Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1, TitlerChanger changer = null)
@@ -240,32 +266,11 @@ namespace UltraPaste
             TextMediaProperties properties = new TextMediaProperties()
             {
                 Text = text,
-                MediaMilliseconds = length.ToMilliseconds()
+                MediaSeconds = length.ToMilliseconds() / 1000
             };
             return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(properties.GenerateProTypeTitlerMedia(presetName, changer), start, length, useMultipleSelectedTracks, newTrackIndex);
         }
 
-        public static List<VideoEvent> GenerateTitlesAndTextEvents(Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
-        {
-            Media media = Media.CreateInstance(UltraPasteCommon.Vegas.Project, PlugInTitlesAndText, presetName);
-            if (length.Nanos > 0)
-            {
-                media.Length = length;
-            }
-
-            if (!string.IsNullOrEmpty(text))
-            {
-                OFXStringParameter textPara = (OFXStringParameter)media.Generator.OFXEffect["Text"];
-                RichTextBox rtb = new RichTextBox
-                {
-                    Rtf = textPara.Value,
-                    Text = text
-                };
-                textPara.Value = rtb.Rtf;
-            }
-
-            return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
-        }
         public static List<VideoEvent> GenerateLegacyTextEvents(Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
         {
             if (PlugInLegacyText == null)
@@ -345,23 +350,188 @@ namespace UltraPaste
             return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
         }
 
-        // support for "Text OFX" (see: https://text.openfx.no/)
-        public static List<VideoEvent> GenerateTextOfxEvents(Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
+        public static List<VideoEvent> GenerateSolidColorEvents(Timecode start, Timecode length = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
         {
-            if (PlugInTextOfx == null)
+            if (PlugInSolidColor == null)
             {
                 return new List<VideoEvent>();
             }
-            Media media = Media.CreateInstance(UltraPasteCommon.Vegas.Project, PlugInTextOfx, presetName);
+            Media media = Media.CreateInstance(UltraPasteCommon.Vegas.Project, PlugInSolidColor);
+
             if (length.Nanos > 0)
             {
                 media.Length = length;
             }
 
-            (media.Generator.OFXEffect["text"] as OFXStringParameter).Value = text;
-            (media.Generator.OFXEffect["font"] as OFXStringParameter).Value = (media.Generator.OFXEffect["name"] as OFXChoiceParameter).Value.Name;
+            OFXRGBAParameter c;
+            if ((c = media.Generator.OFXEffect["Color"] as OFXRGBAParameter) != null)
+            {
+                OFXColor color = c.Value;
+                color.A = 0;
+                c.Value = color;
+            }
 
             return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
+        }
+
+        unsafe public static List<VideoEvent> GenerateOfxEvents(PlugInNode plug, Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
+        {
+            if (plug == null)
+            {
+                return new List<VideoEvent>();
+            }
+            if (plug.IsGenerator())
+            {
+                Media media = Media.CreateInstance(UltraPasteCommon.Vegas.Project, plug);
+                if (!string.IsNullOrEmpty(presetName))
+                {
+                    media.Generator.Preset = presetName;
+                }
+                if (length.Nanos > 0)
+                {
+                    media.Length = length;
+                }
+                media.Generator.SetTextStringParameters(text);
+
+                if (plug.UniqueID == PlugInTextOfx?.UniqueID)
+                {
+                    (media.Generator.OFXEffect["font"] as OFXStringParameter).Value = (media.Generator.OFXEffect["name"] as OFXChoiceParameter).Value.Name;
+                }
+                return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
+            }
+            else
+            {
+                List<VideoEvent> vEvents = GenerateSolidColorEvents(start, length, useMultipleSelectedTracks, newTrackIndex);
+
+                foreach (VideoEvent vEvent in vEvents)
+                {
+                    Effect ef = new Effect(plug);
+                    vEvent.Effects.Add(ef);
+                    ef.ApplyBeforePanCrop = true;
+                    if (!string.IsNullOrEmpty(presetName))
+                    {
+                        ef.Preset = presetName;
+                    }
+                    ef.SetTextStringParameters(text);
+                }
+                return vEvents;
+            }
+        }
+
+
+
+        public static List<OFXStringParameter> GetTextStringParameters(this Effect ef)
+        {
+            List<OFXStringParameter> ofxStrings = new List<OFXStringParameter>();
+            if (ef == null || !ef.PlugIn.IsOFX)
+            {
+                return ofxStrings;
+            }
+            OFXStringParameter paraText;
+            if ((paraText = (ef.OFXEffect["Text"] ?? ef.OFXEffect["text"] ?? ef.OFXEffect["Texts"] ?? ef.OFXEffect["texts"]) as OFXStringParameter) != null)
+            {
+                ofxStrings.Add(paraText);
+            }
+            else
+            {
+                string[] paraNames = ef.PlugIn.UniqueID == PlugInUniverseTextTypographic?.UniqueID ? new string[] { "68", "116" } : ef.PlugIn.UniqueID == PlugInUniverseTextHacker?.UniqueID ? new string[] { "0", "1" } : ef.PlugIn.UniqueID == PlugInOfxClock?.UniqueID ? new string[] { "Dig Clock Free Format" } : new string[0];
+                foreach (string paraName in paraNames)
+                {
+                    OFXStringParameter p;
+                    if ((p = ef.OFXEffect[paraName] as OFXStringParameter) != null)
+                    {
+                        ofxStrings.Add(p);
+                    }
+                }
+            }
+            return ofxStrings;
+        }
+
+        public static void SetTextStringParameters(this Effect ef, string text)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            List<OFXStringParameter> ofxStrings = ef.GetTextStringParameters();
+
+            if (ofxStrings.Count == 0)
+            {
+                return;
+            }
+
+            if (ef.PlugIn.UniqueID == PlugInTitlesAndText.UniqueID)
+            {
+                foreach (OFXStringParameter ofxString in ofxStrings)
+                {
+                    ofxString.Value = new RichTextBox { Rtf = ofxString.Value, Text = text }.Rtf;
+                }
+            }
+            else
+            {
+                string[] strs = text.Split(new[] { "\n", "\r\n" }, StringSplitOptions.None);
+
+                int count = Math.Min(ofxStrings.Count, strs.Length);
+
+                for (int i = 0; i < count; i++)
+                {
+                    if (i == count - 1 && strs.Length > ofxStrings.Count)
+                    {
+                        ofxStrings[i].Value = string.Join("\n", strs);
+                    }
+                    else
+                    {
+                        ofxStrings[i].Value = strs[i];
+                        strs[i] = string.Empty;
+                    }
+                }
+            }
+        }
+
+        public static void SetTextPreset(this Effect ef, string preset)
+        {
+            if (preset == null)
+            {
+                return;
+            }
+
+            List<OFXStringParameter> ofxStrings = ef.GetTextStringParameters();
+
+            if (ofxStrings.Count == 0)
+            {
+                return;
+            }
+
+            string[] strs = ofxStrings.Select(s => s.Value).ToArray();
+
+            ef.Preset = preset;
+
+            for (int i = 0; i < ofxStrings.Count; i++)
+            {
+                ofxStrings[i].Value = ef.PlugIn.UniqueID == PlugInTitlesAndText?.UniqueID ? new RichTextBox { Rtf = ofxStrings[i].Value, Text = new RichTextBox { Rtf = strs[i] }.Text }.Rtf : strs[i];
+            }
+        }
+
+        public static string[] GetAvailablePresets(this PlugInNode plug)
+        {
+            if (plug == null)
+            {
+                return new string[0];
+            }
+            else if (plug.IsOFX)
+            {
+                List<string> l = new List<string>();
+                foreach (EffectPreset p in plug.Presets)
+                {
+                    l.Add(p.Name);
+                }
+                return l.ToArray();
+            }
+            else
+            {
+                return plug.GetAvailableDxtPresets();
+            }
         }
     }
 }

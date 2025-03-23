@@ -10,6 +10,7 @@ using System.Text;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using static UltraPaste.SubtitlesData;
 
 namespace UltraPaste
 {
@@ -27,14 +28,14 @@ namespace UltraPaste
         public class Subtitle
         {
             public TimeSpan Start { get; set; }
-            public TimeSpan Length { get { return End - Start; } set { End = Start + value; } }
-            public TimeSpan End { get; set; }
+            public TimeSpan Length { get; set; }
+            public TimeSpan End { get { return Start + Length; } set { Length = value - Start; } }
             public List<string> TextLines { get; set; }
 
             public Subtitle()
             {
                 TextLines = new List<string>();
-                Length = TimeSpan.FromMilliseconds(UltraPasteCommon.Settings.SubtitlesImport.DefaultLengthMilliseconds);
+                Length = TimeSpan.FromSeconds(UltraPasteCommon.Settings.SubtitlesImport.DefaultLengthSeconds);
             }
 
             public void SplitCharacters(int maxCharacters, bool ignoreWord = false)
@@ -50,6 +51,12 @@ namespace UltraPaste
                 {
                     foreach (string line in oldTextLines)
                     {
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            TextLines.Add(string.Empty);
+                            continue;
+                        }
+
                         for (int i = 0; i < line.Length; i += maxCharacters)
                         {
                             TextLines.Add(line.Substring(i, Math.Min(line.Length - i, maxCharacters)));
@@ -60,6 +67,12 @@ namespace UltraPaste
                 {
                     foreach (string line in oldTextLines)
                     {
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            TextLines.Add(string.Empty);
+                            continue;
+                        }
+
                         string[] parts = Regex.Split(line, @"(\s+)");
 
                         string current = null;
@@ -106,6 +119,10 @@ namespace UltraPaste
             Subtitles = new List<Subtitle>();
             foreach (Subtitle sub in oldSubtitles)
             {
+                if (sub.TextLines.Count == 0)
+                {
+                    continue;
+                }
                 TimeSpan start = sub.Start, length = new TimeSpan(sub.Length.Ticks / (int)Math.Ceiling(sub.TextLines.Count * 1.0 / maxLines));
                 for (int i = 0; i < sub.TextLines.Count; i += maxLines)
                 {
@@ -115,9 +132,13 @@ namespace UltraPaste
             }
         }
 
-        public void SplitCharactersAndLines(int maxCharacters, bool ignoreWord, int maxLines)
+        public void SplitCharactersAndLines(int maxCharacters, bool ignoreWord, int maxLines, bool multipleTracks)
         {
-            TimeSpan singleLength = Subtitles.Count > 0 ? Subtitles[0].Length : TimeSpan.Zero;
+            if (Subtitles.Count == 0)
+            {
+                return;
+            }
+            TimeSpan singleLength = Subtitles[0].Length;
             if (maxCharacters > 0)
             {
                 foreach (Subtitle sub in Subtitles)
@@ -128,15 +149,24 @@ namespace UltraPaste
 
             SplitLines(maxLines);
 
-            if (IsFromStrings)
+            if (IsFromStrings && Subtitles.Count > 0)
             {
                 TimeSpan start = new TimeSpan(0);
 
+                singleLength = TimeSpan.FromTicks(singleLength.Ticks / Subtitles.Count);
                 foreach (Subtitle sub in Subtitles)
                 {
                     sub.Start = start;
                     sub.Length = singleLength;
                     start += singleLength;
+                }
+            }
+
+            if (!multipleTracks)
+            {
+                foreach (Subtitle sub in Subtitles)
+                {
+                    sub.TextLines = new List<string>(new string[] { string.Join("\n", sub.TextLines) });
                 }
             }
         }
@@ -147,10 +177,10 @@ namespace UltraPaste
 
             if (closeGap)
             {
-                TimeSpan offset = TimeSpan.Zero;
+                TimeSpan offset = TimeSpan.MaxValue;
                 foreach (Subtitle subtitle in Subtitles)
                 {
-                    if (subtitle.Start > offset)
+                    if (subtitle.Start < offset)
                     {
                         offset = subtitle.Start;
                     }
@@ -162,30 +192,32 @@ namespace UltraPaste
             {
                 Timecode subStart = Timecode.FromMilliseconds(subtitle.Start.TotalMilliseconds) + start, subLength = Timecode.FromMilliseconds(subtitle.Length.TotalMilliseconds);
                 Timecode subEnd = subStart + subLength;
-                string text = string.Join("\n", subtitle.TextLines);
                 int newTrackIndex = -1;
                 List<Track> overlapTracks = new List<Track>();
-                foreach (VideoEvent ev in evs)
+                foreach (string text in subtitle.TextLines)
                 {
-                    if (ev.Start < subEnd && subStart < ev.End)
+                    foreach (VideoEvent ev in evs)
                     {
-                        if (newTrackIndex < ev.Track.Index)
+                        if (ev.Start < subEnd && subStart < ev.End)
                         {
-                            newTrackIndex = ev.Track.Index;
-                        }
-                        if(!overlapTracks.Contains(ev.Track))
-                        {
-                            ev.Track.Selected = false;
-                            overlapTracks.Add(ev.Track);
+                            if (newTrackIndex < ev.Track.Index)
+                            {
+                                newTrackIndex = ev.Track.Index;
+                            }
+                            if (!overlapTracks.Contains(ev.Track))
+                            {
+                                ev.Track.Selected = false;
+                                overlapTracks.Add(ev.Track);
+                            }
                         }
                     }
+                    evs.AddRange(TextMediaGenerator.GenerateTextEvents(subStart, subLength, text, type, presetName, useMultipleSelectedTracks, newTrackIndex));
                 }
-                List<VideoEvent> vEvents = TextMediaGenerator.GenerateTextEvents(subStart, subLength, text, type, presetName, useMultipleSelectedTracks, newTrackIndex);
+
                 foreach (Track trk in overlapTracks)
                 {
                     trk.Selected = true;
                 }
-                evs.AddRange(vEvents);
             }
             return evs;
         }
@@ -207,7 +239,7 @@ namespace UltraPaste
 
         public static class Parser
         {
-            public static SubtitlesData ParseFromFile(string path)
+            public static SubtitlesData ParseFromFile(string path, Timecode length = null)
             {
                 string ext = Path.GetExtension(path).ToLower();
                 if (ext == ".srt")
@@ -220,7 +252,7 @@ namespace UltraPaste
                 }
                 else if (ext == ".txt")
                 {
-                    return ParseFromStrings(Encoding.UTF8.GetString(File.ReadAllBytes(path)));
+                    return ParseFromStrings(Encoding.UTF8.GetString(File.ReadAllBytes(path)), length);
                 }
                 else
                 {
@@ -228,11 +260,19 @@ namespace UltraPaste
                 }
             }
 
-            public static SubtitlesData ParseFromStrings(string content)
+            public static SubtitlesData ParseFromStrings(string content, Timecode length = null)
             {
                 SubtitlesData data = new SubtitlesData() { IsFromStrings = true };
-                string[] lines = content.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+                string[] lines = !string.IsNullOrEmpty(content) ? content.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries) : new string[] { string.Empty };
+                if (lines.Length == 0)
+                {
+                    lines = new string[] { string.Empty };
+                }
                 Subtitle subtitle = new Subtitle() { TextLines = new List<string>(lines) };
+                if (length?.Nanos > 0)
+                {
+                    subtitle.Length = TimeSpan.FromMilliseconds(length.ToMilliseconds());
+                }
                 data.Subtitles.Add(subtitle);
                 return data;
             }

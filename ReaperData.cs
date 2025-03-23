@@ -16,8 +16,14 @@ namespace UltraPaste
     public class ReaperData
     {
         public List<ReaperTrack> Tracks { get; set; }
-        public bool IsFromTrackData { get; set; }
+        public bool IsTrackData { get; set; }
         private string projectFilePath;
+        private static readonly System.Reflection.Assembly assembly = typeof(Vegas).Assembly;
+        private static readonly Type elastiqueStretchAttributes = assembly.GetType(string.Format("{0}.ElastiqueStretchAttributes", typeof(Vegas).Namespace)), timeStretchPitchShift = assembly.GetType(string.Format("{0}.TimeStretchPitchShift", typeof(Vegas).Namespace));
+        private static readonly System.Reflection.PropertyInfo propertyElastiqueAttribute = typeof(AudioEvent).GetProperty("ElastiqueAttribute", elastiqueStretchAttributes),
+                                               propertyPitchSemis = typeof(AudioEvent).GetProperty("PitchSemis", typeof(double)),
+                                                   propertyMethod = typeof(AudioEvent).GetProperty("Method", timeStretchPitchShift),
+                                              propertyFormantLock = typeof(AudioEvent).GetProperty("FormantLock", typeof(bool));
         public string ProjectFilePath
         {
             get { return projectFilePath; }
@@ -50,7 +56,19 @@ namespace UltraPaste
             Tracks = new List<ReaperTrack>();
         }
 
-        public static ReaperData FromVegasEvents(List<TrackEvent> evs)
+        public static ReaperData From(IEnumerable<Track> tracks)
+        {
+            List<TrackEvent> evs = new List<TrackEvent>();
+            foreach (Track track in tracks)
+            {
+                evs.AddRange(track.Events);
+            }
+            ReaperData data = From(evs);
+            data.IsTrackData = true;
+            return data;
+        }
+
+        public static ReaperData From(IEnumerable<TrackEvent> evs)
         {
             ReaperData data = new ReaperData();
             Track lastTrack = null;
@@ -77,6 +95,30 @@ namespace UltraPaste
                 {
                     currentTrack = new ReaperTrack();
                     data.Tracks.Add(currentTrack);
+                    currentTrack.Name = ev.Track.Name;
+                    currentTrack.VolPan = new double[] { 1, 0, -1, -1, 1 };
+                    currentTrack.MuteSolo = new int[] { ev.Track.Mute ? 1 : 0, ev.Track.Solo ? 2 : 0, 0 };
+                    if (ev.Track is AudioTrack aTrack)
+                    {
+                        currentTrack.VolPan = new double[] { aTrack.Volume, aTrack.PanX, -1, -1, 1 };
+                        currentTrack.IPhase = aTrack.InvertPhase;
+
+                        foreach (Envelope en in aTrack.Envelopes)
+                        {
+                            string type = en.Type == EnvelopeType.Volume ? "VOLENV2" : en.Type == EnvelopeType.Pan ? "PANENV2" : en.Type == EnvelopeType.Mute ? "MUTEENV" : null;
+                            if (type == null)
+                            {
+                                continue;
+                            }
+
+                            ReaperEnvelope env = new ReaperEnvelope() { Type = type };
+                            foreach (EnvelopePoint p in en.Points)
+                            {
+                                env.Points.Add(new double[] { p.X.ToMilliseconds() * 1000, p.Y, p.Curve == CurveType.None ? 1 : p.Curve == CurveType.Smooth ? 2 : p.Curve == CurveType.Fast ? 3: p.Curve == CurveType.Slow ? 4 : 0, 0, 0, 0, 0, p.X.ToMilliseconds() / 500 });
+                            }
+                            currentTrack.Envelopes.Add(env);
+                        }
+                    }
                 }
                 currentTrack.Items.Add(item);
 
@@ -84,37 +126,37 @@ namespace UltraPaste
                 {
                     AudioEvent aEvent = ev as AudioEvent;
                     item.VolPan[2] = aEvent.Normalize ? (aEvent.NormalizeGain * (aEvent.InvertPhase ? -1 : 1)) : 1;
-                    int methodType = 0;
-                    if (aEvent.Method != TimeStretchPitchShift.Elastique)
+
+                    int methodType = -1;
+                    double pitch = 0;
+                    if (elastiqueStretchAttributes != null && timeStretchPitchShift != null)
                     {
-                        methodType = -1;
-                    }
-                    else
-                    {
-                        switch (aEvent.ElastiqueAttribute)
+                        if (propertyElastiqueAttribute != null && propertyPitchSemis != null && propertyMethod != null)
                         {
-                            case ElastiqueStretchAttributes.Pro:
-                                methodType += 0x90000;
-                                break;
-
-                            case ElastiqueStretchAttributes.Efficient:
-                                methodType += 0xA0000;
-                                break;
-
-                            case ElastiqueStretchAttributes.Soloist_Monophonic:
-                                methodType += 0xB0000;
-                                break;
-
-                            case ElastiqueStretchAttributes.Soloist_Speech:
-                                methodType += 0xB0002;
-                                break;
-
-                            default:
-                                methodType = -1;
-                                break;
+                            pitch = (double)propertyPitchSemis.GetValue(aEvent);
+                            if (propertyMethod.GetValue(aEvent) == Enum.Parse(timeStretchPitchShift, "Elastique"))
+                            {
+                                object obj = propertyElastiqueAttribute.GetValue(aEvent);
+                                if (obj == Enum.Parse(elastiqueStretchAttributes, "Pro"))
+                                {
+                                    methodType += 0x90000;
+                                }
+                                else if (obj == Enum.Parse(elastiqueStretchAttributes, "Efficient"))
+                                {
+                                    methodType += 0xA0000;
+                                }
+                                else if (obj == Enum.Parse(elastiqueStretchAttributes, "Soloist_Monophonic"))
+                                {
+                                    methodType += 0xB0000;
+                                }
+                                else if (obj == Enum.Parse(elastiqueStretchAttributes, "Soloist_Speech"))
+                                {
+                                    methodType += 0xB0002;
+                                }
+                            }
                         }
                     }
-                    item.PlayRate = new double[] { ev.PlaybackRate, 1, aEvent.PitchSemis, methodType, 0, 0.0025 };
+                    item.PlayRate = new double[] { ev.PlaybackRate, 1, pitch, methodType, 0, 0.0025 };
                     item.ChanMode = aEvent.Channels == ChannelRemapping.Swap ? 1 : aEvent.Channels == ChannelRemapping.Mono ? 2 : aEvent.Channels == ChannelRemapping.DisableRight || aEvent.Channels == ChannelRemapping.MuteRight ? 3 : aEvent.Channels == ChannelRemapping.DisableLeft || aEvent.Channels == ChannelRemapping.MuteLeft ? 4 : 0;
                 }
 
@@ -123,6 +165,10 @@ namespace UltraPaste
                 {
                     currentTake.Name = tk.Name;
                     currentTake.SOffs = tk.Offset.ToMilliseconds() / 1000 * ev.PlaybackRate;
+                    if (!File.Exists(tk.MediaPath))
+                    {
+                        continue;
+                    }
                     if (tk.Media.HasVideo())
                     {
                         currentTake.Source.Type = "VIDEO";
@@ -159,13 +205,14 @@ namespace UltraPaste
                 }
                 lastTrack = ev.Track;
             }
+
             return data;
         }
 
         public List<TrackEvent> GenerateEventsToVegas(Timecode start, bool closeGap = true, bool addVideoStreams = true)
         {
             List<TrackEvent> l = new List<TrackEvent>();
-            if (IsFromTrackData)
+            if (IsTrackData)
             {
                 foreach (Track t in UltraPasteCommon.Vegas.Project.Tracks)
                 {
@@ -212,7 +259,7 @@ namespace UltraPaste
             Track lastTrack = null;
             foreach (ReaperTrack track in Tracks)
             {
-                if (IsFromTrackData)
+                if (IsTrackData)
                 {
                     AudioTrack trk = new AudioTrack(UltraPasteCommon.Vegas.Project, -1, track.Name);
                     UltraPasteCommon.Vegas.Project.Tracks.Add(trk);
@@ -261,7 +308,7 @@ namespace UltraPaste
                         foreach (double[] p in env.Points)
                         {
                             Timecode t = Timecode.FromSeconds(p[0]);
-                            if (IsFromTrackData)
+                            if (IsTrackData)
                             {
                                 t += start;
                             }
@@ -279,7 +326,7 @@ namespace UltraPaste
                             }
                             point.Curve = curve;
                         }
-                        if (IsFromTrackData && (env.Points[0][0] != 0 || start.Nanos != 0))
+                        if (IsTrackData && (env.Points[0][0] != 0 || start.Nanos != 0))
                         {
                             en.Points[0].Curve = CurveType.None;
                             //if (en.Points.Count > 1) { en.Points[0].Y = en.Points[1].Y; }
@@ -373,36 +420,41 @@ namespace UltraPaste
                             ev.InvertPhase = item.VolPan[2] < 0;
                         }
 
-                        ev.PitchSemis = item.PlayRate?.Length > 2 ? item.PlayRate[2] : 0;
-                        if (item.PlayRate?.Length > 1 && (int)item.PlayRate[1] == 0)
+                        if (elastiqueStretchAttributes != null && timeStretchPitchShift != null)
                         {
-                            ev.PitchSemis += Math.Log(ev.PlaybackRate, 2) * 12;
+                            if (propertyElastiqueAttribute != null && propertyFormantLock != null && propertyPitchSemis != null && propertyMethod != null)
+                            {
+                                propertyPitchSemis.SetValue(ev, (item.PlayRate?.Length > 2 ? item.PlayRate[2] : 0) + ((item.PlayRate?.Length > 1 && (int)item.PlayRate[1] == 0) ? (Math.Log(ev.PlaybackRate, 2) * 12) : 0));
+
+                                int methodType = item.PlayRate.Length > 3 ? (int)item.PlayRate[3] : 0;
+
+                                switch (methodType / 0x10000)
+                                {
+                                    case 0x6:
+                                    case 0x9:
+                                        propertyMethod.SetValue(ev, Enum.Parse(timeStretchPitchShift, "Elastique"));
+                                        propertyElastiqueAttribute.SetValue(ev, Enum.Parse(elastiqueStretchAttributes, "Pro"));
+                                        propertyFormantLock.SetValue(ev, methodType - (methodType / 8 * 8) != 0);
+                                        break;
+
+                                    case 0x7:
+                                    case 0xA:
+                                        propertyMethod.SetValue(ev, Enum.Parse(timeStretchPitchShift, "Elastique"));
+                                        propertyElastiqueAttribute.SetValue(ev, Enum.Parse(elastiqueStretchAttributes, "Efficient"));
+                                        break;
+
+                                    case 0x8:
+                                    case 0xB:
+                                        propertyMethod.SetValue(ev, Enum.Parse(timeStretchPitchShift, "Elastique"));
+                                        propertyElastiqueAttribute.SetValue(ev, Enum.Parse(elastiqueStretchAttributes, (methodType - (methodType / 4 * 4)) / 2 == 0 ? "Soloist_Monophonic" : "Soloist_Speech"));
+                                        break;
+
+                                    default:
+                                        break;
+                                }
+                            }
                         }
-                        int methodType = item.PlayRate.Length > 3 ? (int)item.PlayRate[3] : 0;
-                        switch (methodType / 0x10000)
-                        {
-                            case 0x6:
-                            case 0x9:
-                                ev.Method = TimeStretchPitchShift.Elastique;
-                                ev.ElastiqueAttribute = ElastiqueStretchAttributes.Pro;
-                                ev.FormantLock = methodType - (methodType / 8 * 8) != 0;
-                                break;
 
-                            case 0x7:
-                            case 0xA:
-                                ev.Method = TimeStretchPitchShift.Elastique;
-                                ev.ElastiqueAttribute = ElastiqueStretchAttributes.Efficient;
-                                break;
-
-                            case 0x8:
-                            case 0xB:
-                                ev.Method = TimeStretchPitchShift.Elastique;
-                                ev.ElastiqueAttribute = (methodType - (methodType / 4 * 4)) / 2 == 0 ? ElastiqueStretchAttributes.Soloist_Monophonic : ElastiqueStretchAttributes.Soloist_Speech;
-                                break;
-
-                            default:
-                                break;
-                        }
 
                         if (item.Takes != null)
                         {
@@ -982,7 +1034,7 @@ namespace UltraPaste
                         ReaperTrack track = ParseFromBlock<ReaperTrack>(child);
                         if (track != null)
                         {
-                            data.IsFromTrackData = true;
+                            data.IsTrackData = true;
                             data.Tracks.Add(track);
                         }
                         else
@@ -1369,22 +1421,13 @@ namespace UltraPaste
                 List<byte[]> tokens = new List<byte[]>();
                 foreach (ReaperTrack track in data.Tracks)
                 {
-                    if (data.IsFromTrackData)
+                    if (data.IsTrackData)
                     {
                         tokens.Add(Encoding.UTF8.GetBytes("<TRACK"));
                         AddPropertyTokens(tokens, "NAME", track.Name);
                         AddPropertyTokens(tokens, "VOLPAN", track.VolPan);
                         AddPropertyTokens(tokens, "MUTESOLO", track.MuteSolo);
                         AddPropertyTokens(tokens, "IPHASE", track.IPhase);
-                    }
-                    foreach (ReaperEnvelope env in track.Envelopes)
-                    {
-                        tokens.Add(Encoding.UTF8.GetBytes(string.Format(data.IsFromTrackData ? "<ENVSEG {0}" : "<{0}", env.Type)));
-                        foreach (double[] p in env.Points)
-                        {
-                            AddPropertyTokens(tokens, "PT", p);
-                        }
-                        tokens.Add(Encoding.UTF8.GetBytes(">"));
                     }
                     foreach (ReaperItem item in track.Items)
                     {
@@ -1418,13 +1461,22 @@ namespace UltraPaste
                         }
                         tokens.Add(Encoding.UTF8.GetBytes(">"));
                     }
-                    if (data.IsFromTrackData)
+                    foreach (ReaperEnvelope env in track.Envelopes)
                     {
-                        tokens.Add(Encoding.UTF8.GetBytes("<TRACK"));
-                        AddPropertyTokens(tokens, "NAME", track.Name);
-                        AddPropertyTokens(tokens, "VOLPAN", track.VolPan);
-                        AddPropertyTokens(tokens, "MUTESOLO", track.MuteSolo);
-                        AddPropertyTokens(tokens, "IPHASE", track.IPhase);
+                        tokens.Add(Encoding.UTF8.GetBytes(string.Format(data.IsTrackData ? "<{0}" : "<ENVSEG {0}", env.Type)));
+                        if (!data.IsTrackData && env.SegRange != null)
+                        {
+                            AddPropertyTokens(tokens, "SEG_RANGE", env.SegRange);
+                        }
+                        foreach (double[] p in env.Points)
+                        {
+                            AddPropertyTokens(tokens, "PT", p);
+                        }
+                        tokens.Add(Encoding.UTF8.GetBytes(">"));
+                    }
+                    if (data.IsTrackData)
+                    {
+                        tokens.Add(Encoding.UTF8.GetBytes(">"));
                     }
                     else /* if (track != data.Tracks[data.Tracks.Count - 1]) */
                     {

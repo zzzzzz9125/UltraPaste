@@ -13,6 +13,7 @@ using System.Xml.Serialization;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
+using System.Linq;
 
 #if TEST
 public static class S
@@ -28,6 +29,14 @@ public static class Common
 {
     public static int VegasVersion = FileVersionInfo.GetVersionInfo(Application.ExecutablePath).FileMajorPart;
     public static string RoamingPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+#if !Sony
+    public static System.Drawing.Color[] UIColors = new System.Drawing.Color[] { ScriptPortal.MediaSoftware.Skins.Skins.Colors.ButtonFace, ScriptPortal.MediaSoftware.Skins.Skins.Colors.ButtonText };
+#else
+    public static System.Drawing.Color[] UIColors = new System.Drawing.Color[] { Sony.MediaSoftware.Skins.Skins.Colors.ButtonFace, Sony.MediaSoftware.Skins.Skins.Colors.ButtonText };
+#endif
+
+    private static readonly System.Reflection.MethodInfo methodMediaInfo = typeof(Vegas).GetMethod("MediaInfo", new Type[] { typeof(string) }), methodImportFile_New = typeof(Vegas).GetMethod("ImportFile", new Type[] { typeof(string), typeof(bool), typeof(bool) }), methodImportFile = typeof(Vegas).GetMethod("ImportFile", new Type[] { typeof(string), typeof(bool) });
 
     public static double CalculatePointCoordinateInLine(double x1, double y1, double x2, double y2, double x3)
     {
@@ -264,7 +273,7 @@ public static class Common
     }
 
     // get a mix of modern VEGAS data and Sony one, allowing users to paste between the two
-    public static void UnifyVegasClipboardData()
+    public static void GenerateMixedVegasClipboardData()
     {
         string vegasDataStr = "Vegas Data 5.0", sonyVegasDataStr = "Sony Vegas Data 5.0", vegasMetaDataStr = "Vegas Meta-Data 5.0", sonyVegasMetaDataStr = "Sony Vegas Meta-Data 5.0";
 
@@ -512,21 +521,20 @@ public static class Common
         }
         try
         {
-            System.Reflection.MethodInfo method;
-            if ((method = typeof(Vegas).GetMethod("MediaInfo", new Type[] { typeof(string) })) != null)
+            if (methodMediaInfo != null)
             {
                 // VEGAS Pro 18+
-                method.Invoke(vegas, new object[] { path });
+                methodMediaInfo.Invoke(vegas, new object[] { path });
             }
-            else if ((method = typeof(Vegas).GetMethod("ImportFile", new Type[] { typeof(string), typeof(bool), typeof(bool) })) != null)
+            else if (methodImportFile_New != null)
             {
                 // VEGAS Pro 22 Build 122+ (not recommended, for compatibility only)
-                method.Invoke(vegas, new object[] { path, true, false });
+                methodImportFile_New.Invoke(vegas, new object[] { path, true, false });
             }
-            else if ((method = typeof(Vegas).GetMethod("ImportFile", new Type[] { typeof(string), typeof(bool) })) != null)
+            else
             {
                 // VEGAS Pro 22 Build 93-
-                method.Invoke(vegas, new object[] { path, true });
+                methodImportFile?.Invoke(vegas, new object[] { path, true });
             }
             Media media = Media.CreateInstance(vegas.Project, path);
             return media;
@@ -540,5 +548,50 @@ public static class Common
     public static System.Drawing.Color ConvertToColor(this OFXColor ofxColor)
     {
         return System.Drawing.Color.FromArgb((int)(ofxColor.A * 255), (int)(ofxColor.R * 255), (int)(ofxColor.G * 255), (int)(ofxColor.B * 255));
+    }
+
+    public static string RemoveMatchedPart(this string str1, string str2)
+    {
+        List<int> nonWhitespaceIndices = new List<int>();
+        for (int i = 0; i < str1.Length; i++)
+        {
+            if (!char.IsWhiteSpace(str1[i]))
+            {
+                nonWhitespaceIndices.Add(i);
+            }
+        }
+
+        if (nonWhitespaceIndices.Count < str2.Length)
+        {
+            return str1;
+        }
+
+        bool isMatched = true;
+        for (int i = 0; i < str2.Length; i++)
+        {
+            if (str1[nonWhitespaceIndices[i]] != str2[i])
+            {
+                isMatched = false;
+                break;
+            }
+        }
+
+        if (!isMatched)
+        {
+            return str1;
+        }
+
+        HashSet<int> removeIndices = new HashSet<int>(nonWhitespaceIndices.Take(str2.Length));
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < str1.Length; i++)
+        {
+            if (!removeIndices.Contains(i))
+            {
+                sb.Append(str1[i]);
+            }
+        }
+
+        return sb.ToString();
     }
 }

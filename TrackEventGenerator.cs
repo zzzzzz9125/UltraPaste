@@ -74,15 +74,19 @@ namespace UltraPaste
 
             if (selectedTracks.Count == 0)
             {
-                foreach (Track trk in project.Tracks)
+                if (useMultipleSelectedTracks)
                 {
-                    if (trk.Index >= newTrackIndex && (isVideoOnly && trk.IsVideo() || (isAudioOnly && trk.IsAudio())))
+                    foreach (Track trk in project.Tracks)
                     {
-                        trk.Selected = true;
-                        selectedTracks.Add(trk);
-                        break;
+                        if (trk.Index >= newTrackIndex && ((isVideoOnly && trk.IsVideo()) || (isAudioOnly && trk.IsAudio()) || (!isVideoOnly && !isAudioOnly)))
+                        {
+                            trk.Selected = true;
+                            selectedTracks.Add(trk);
+                            break;
+                        }
                     }
                 }
+
                 if (selectedTracks.Count == 0)
                 {
                     Track trk = typeof(T) == typeof(AudioEvent) || (media != null && !media.HasVideo()) ? (Track)new AudioTrack(project, newTrackIndex, null) : new VideoTrack(project, newTrackIndex, null);
@@ -142,48 +146,48 @@ namespace UltraPaste
             return ev.AddTake(ms, makeActive, name);
         }
 
-        public static List<TrackEvent> AddMissingStreams<T>(this Project project, IEnumerable<T> evs, MediaType type = MediaType.Unknown, bool reverse = false) where T : TrackEvent
+        public static List<TrackEvent> AddMissingStreams<T>(this Project project, IEnumerable<T> evs, MediaType type = MediaType.Unknown, bool reverse = false, int offset = 0, bool alwaysGenerateNewTracks = false, int videoTrackNestedDiff = 0) where T : TrackEvent
         {
             List<TrackEvent> l = new List<TrackEvent>();
             foreach (T ev in evs)
             {
-                l.AddRange(AddMissingStreams(project, ev, type, reverse));
+                l.AddRange(AddMissingStreams(project, ev, type, reverse, offset, alwaysGenerateNewTracks, videoTrackNestedDiff));
             }
             return l;
         }
 
-        public static List<TrackEvent> AddMissingStreams<T>(this Project project, T ev, MediaType type = MediaType.Unknown, bool reverse = false) where T : TrackEvent
+        public static List<TrackEvent> AddMissingStreams<T>(this Project project, T ev, MediaType type = MediaType.Unknown, bool reverse = false, int offset = 0, bool alwaysGenerateNewTracks = false, int videoTrackNestedDiff = 0) where T : TrackEvent
         {
             List<TrackEvent> l = new List<TrackEvent>();
             if (type == MediaType.Video)
             {
-                AddMissingStreams(project, ev, out List<VideoEvent> list, reverse);
+                AddMissingStreams(project, ev, out List<VideoEvent> list, reverse, offset, alwaysGenerateNewTracks, videoTrackNestedDiff);
                 l.AddRange(list);
             }
             else if (type == MediaType.Audio)
             {
-                AddMissingStreams(project, ev, out List<AudioEvent> list, reverse);
+                AddMissingStreams(project, ev, out List<AudioEvent> list, reverse, offset, alwaysGenerateNewTracks, videoTrackNestedDiff);
                 l.AddRange(list);
             }
             else
             {
-                AddMissingStreams(project, ev, out List<TrackEvent> list, reverse);
+                AddMissingStreams(project, ev, out List<TrackEvent> list, reverse, offset, alwaysGenerateNewTracks, videoTrackNestedDiff);
                 l.AddRange(list);
             }
             return l;
         }
 
-        public static void AddMissingStreams<T, U>(this Project project, IEnumerable<T> evs, out List<U> l, bool reverse = false) where T : TrackEvent where U : TrackEvent
+        public static void AddMissingStreams<T, U>(this Project project, IEnumerable<T> evs, out List<U> l, bool reverse = false, int offset = 0, bool alwaysGenerateNewTracks = false, int videoTrackNestedDiff = 0) where T : TrackEvent where U : TrackEvent
         {
             l = new List<U>();
             foreach (T ev in evs)
             {
-                AddMissingStreams(project, ev, out List<U> list, reverse);
+                AddMissingStreams(project, ev, out List<U> list, reverse, offset, alwaysGenerateNewTracks, videoTrackNestedDiff);
                 l.AddRange(list);
             }
         }
 
-        public static void AddMissingStreams<T, U>(this Project project, T ev, out List<U> l, bool reverse = false) where T : TrackEvent where U : TrackEvent
+        public static void AddMissingStreams<T, U>(this Project project, T ev, out List<U> l, bool reverse = false, int offset = 0, bool alwaysGenerateNewTracks = false, int videoTrackNestedDiff = 0) where T : TrackEvent where U : TrackEvent
         {
             l = new List<U>();
             if (ev.Takes.Count == 0)
@@ -215,13 +219,16 @@ namespace UltraPaste
                 group.Add(ev);
             }
 
-            streams.Sort((a, b) => { return Math.Abs(a.Index - ev.ActiveTake.MediaStream.Index) - Math.Abs(b.Index - ev.ActiveTake.MediaStream.Index); });
-
-            if (reverse)
+            while (offset < 0)
             {
-                streams.Reverse();
+                offset += ev.ActiveTake.Media.Streams.Count;
             }
+            int index = (ev.ActiveTake.MediaStream.Index + offset) % ev.ActiveTake.Media.Streams.Count;
 
+            streams.Sort((a, b) => { return Math.Abs((a.Index + offset) % ev.ActiveTake.Media.Streams.Count - index) - Math.Abs((b.Index + offset) % ev.ActiveTake.Media.Streams.Count - index); });
+
+
+            int nestingLevel = ev.Track is VideoTrack vTrack ? Math.Max(0, vTrack.CompositeNestingLevel + videoTrackNestedDiff) : -1;
             foreach (MediaStream stream in streams)
             {
                 if ((typeof(U) == typeof(VideoEvent) && stream.MediaType != MediaType.Video) || (typeof(U) == typeof(AudioEvent) && stream.MediaType != MediaType.Audio))
@@ -236,32 +243,50 @@ namespace UltraPaste
                     continue;
                 }
 
-                int trackIndex = ev.Track.Index + (indexOffset > 0 ? 1 : -1);
-                while (trackIndex > -1 && trackIndex < project.Tracks.Count)
+                if (offset != 0)
                 {
-                    Track trk = project.Tracks[trackIndex];
-                    if (usedTrack.Contains(trk))
+                    indexOffset = (stream.Index + offset) % ev.ActiveTake.Media.Streams.Count - index;
+                }
+
+                indexOffset *= reverse ? -1 : 1;
+
+                int trackIndex = ev.Track.Index + (indexOffset > 0 ? 1 : -1);
+                if (!alwaysGenerateNewTracks)
+                {
+                    while (trackIndex > -1 && trackIndex < project.Tracks.Count)
                     {
-                        trackIndex += indexOffset > 0 ? 1 : -1;
-                    }
-                    else
-                    {
-                        if (trk.MediaType == stream.MediaType)
+                        Track trk = project.Tracks[trackIndex];
+                        if (usedTrack.Contains(trk))
                         {
-                            track = trk;
+                            trackIndex += indexOffset > 0 ? 1 : -1;
                         }
-                        else if (indexOffset < 0)
+                        else
                         {
-                            trackIndex += 1;
+                            if (trk.MediaType == stream.MediaType && (!(trk is VideoTrack vTrk) || nestingLevel < 0 || vTrk.CompositeNestingLevel == nestingLevel))
+                            {
+                                track = trk;
+                            }
+                            else if (indexOffset < 0)
+                            {
+                                trackIndex += 1;
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
 
                 if (track == null)
                 {
+                    trackIndex = Math.Max(0, trackIndex);
                     track = stream.MediaType == MediaType.Video ? (Track)new VideoTrack(project, trackIndex, null) : new AudioTrack(project, trackIndex, null);
                     project.Tracks.Add(track);
+                    if (track is VideoTrack vTrk && track.Index > 0 && nestingLevel > -1)
+                    {
+                        vTrk.CompositeNestingLevel = nestingLevel;
+                    }
+                    track.Name = ev.Track.Name;
+                    track.Solo = ev.Track.Solo;
+                    track.Mute = ev.Track.Mute;
                 }
 
                 TrackEvent nev = stream.MediaType == MediaType.Video ? (TrackEvent)new VideoEvent(project, ev.Start, ev.Length, null) : new AudioEvent(project, ev.Start, ev.Length, null);
@@ -269,6 +294,7 @@ namespace UltraPaste
                 nev.AddTake(stream);
                 nev.PlaybackRate = ev.PlaybackRate;
                 nev.ActiveTake.Offset = ev.ActiveTake.Offset;
+                nev.Loop = ev.Loop;
                 group.Add(nev);
                 usedTrack.Add(nev.Track);
                 l.Add((U)nev);

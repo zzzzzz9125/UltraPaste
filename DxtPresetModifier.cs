@@ -9,6 +9,7 @@ using System.IO;
 using System.Text;
 using Microsoft.Win32;
 using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace UltraPaste
 {
@@ -76,7 +77,7 @@ namespace UltraPaste
         {
             if (plugIn == null || plugIn.IsOFX || string.IsNullOrEmpty(presetName))
             {
-                return null;
+                return new byte[0];
             }
 
             RegistryKey myReg = DxtReg.CreateSubKey(plugIn.UniqueID);
@@ -84,7 +85,7 @@ namespace UltraPaste
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
                 
-                return myReg.GetValue(presetName) as byte[] ?? null;
+                return myReg.GetValue(presetName) as byte[] ?? new byte[0];
             }
 
             byte[] data = null;
@@ -97,7 +98,7 @@ namespace UltraPaste
 
             if (data == null || data.Length < 4)
             {
-                return null;
+                return new byte[0];
             }
 
             byte[] newData = new byte[data.Length - 4];
@@ -105,14 +106,14 @@ namespace UltraPaste
             return newData;
         }
 
-        public static string[] GetValidPresets(this PlugInNode plugIn)
+        public static string[] GetAvailableDxtPresets(this PlugInNode plugIn)
         {
             if (plugIn == null || plugIn.IsOFX)
             {
                 return new string [0];
             }
 
-            return DxtReg.OpenSubKey(plugIn.UniqueID)?.GetSubKeyNames() ?? new string[0];
+            return DxtReg.OpenSubKey(plugIn.UniqueID)?.GetValueNames() ?? new string[0];
         }
     }
 }

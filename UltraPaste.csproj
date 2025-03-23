@@ -25,6 +25,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -34,6 +35,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>
@@ -71,10 +73,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CodeTimer.cs" />
     <Compile Include="Common.cs" />
     <Compile Include="DibImageData.cs" />
     <Compile Include="DxtPresetModifier.cs" />
     <Compile Include="ImageSequenceValidator.cs" />
+    <Compile Include="TransparentMouseFollower.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UltraControls.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraPasteWindowSubtitlesInput.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="VirtualKeyboard.cs" />
     <Compile Include="L.cs" />
     <Compile Include="ReaperBlock.cs" />

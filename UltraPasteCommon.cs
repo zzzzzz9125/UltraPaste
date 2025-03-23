@@ -8,13 +8,14 @@ using Region = Sony.Vegas.Region;
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 
 namespace UltraPaste
 {
+    using static UltraPaste.UltraPasteSettings;
     using static VirtualKeyboard;
     public static class UltraPasteCommon
     {
@@ -24,8 +25,11 @@ namespace UltraPaste
         public static Vegas Vegas { get { return myVegas; } set { myVegas = value; } }
         private static Vegas myVegas;
         public static KeyValuePair<Image, string> LastImageAndPath = new KeyValuePair<Image, string>();
+        public static TextBox InputBoxTextBox { get; set; }
+        public static SubtitlesData InputBoxSubtitlesData { get; set; }
+        public static string InputBoxString { get; set; }
 
-        public static void DoPaste()
+        public static void DoPaste(bool isSubtitlesInput = false)
         {
             string projectFileToOpen = null, scriptFileToRun = null;
             bool pasteAttributes = false;
@@ -46,69 +50,97 @@ namespace UltraPaste
 
                 List<TrackEvent> evs = new List<TrackEvent>();
 
-                if (Clipboard.ContainsImage())
+                if ((Settings.SubtitlesImport.InputBoxUseUniversal || isSubtitlesInput) && InputBoxSubtitlesData?.Subtitles.Count > 0)
                 {
-                    Settings.ClipboardImage.ChangeImportStart(myVegas, ref start);
-                    DoPaste_ClipboardImage(ref evs, start, length);
-                }
-                else if (Clipboard.ContainsFileDropList())
-                {
-                    DoPaste_FileDrop(ref evs, start, length, out projectFileToOpen, out scriptFileToRun);
-                }
-                else
-                {
-                    bool success = false;
-                    foreach (string format in Clipboard.GetDataObject().GetFormats())
+                    InputBoxSubtitlesData.SplitCharactersAndLines(Settings.SubtitlesImport.InputBoxMaxCharacters, Settings.SubtitlesImport.InputBoxIgnoreWord, Settings.SubtitlesImport.InputBoxMaxLines, Settings.SubtitlesImport.InputBoxMultipleTracks);
+                    SubtitlesData data = new SubtitlesData();
+                    data.Subtitles.Add(InputBoxSubtitlesData.Subtitles[0]);
+                    data.Subtitles[0].Length = TimeSpan.FromMilliseconds(length.ToMilliseconds());
+                    evs.AddRange(data.DoPaste_Subtitles(ref start, Settings.SubtitlesImport, true));
+                    string str = string.Empty;
+                    for (int i = 1; i < InputBoxSubtitlesData.Subtitles.Count; i++)
                     {
-                        object obj = Clipboard.GetData(format);
-                        if (obj is MemoryStream ms)
+                        str += string.Join("\r\n", InputBoxSubtitlesData.Subtitles[i].TextLines) + (i != InputBoxSubtitlesData.Subtitles.Count - 1 ? "\r\n" : string.Empty);
+                    }
+                    if (InputBoxTextBox != null)
+                    {
+                        InputBoxTextBox.Text = str;
+                    }
+                    else
+                    {
+                        InputBoxString = str;
+                    }
+                    InputBoxSubtitlesData = SubtitlesData.Parser.ParseFromStrings(InputBoxString, null);
+                }
+
+                if (evs.Count == 0)
+                {
+                    if (isSubtitlesInput)
+                    {
+                        return;
+                    }
+
+                    if (Clipboard.ContainsImage())
+                    {
+                        DoPaste_ClipboardImage(evs, ref start, length);
+                    }
+                    else if (Clipboard.ContainsFileDropList())
+                    {
+                        DoPaste_FileDrop(evs, start, length, out projectFileToOpen, out scriptFileToRun);
+                    }
+                    else
+                    {
+                        bool success = false;
+                        foreach (string format in Clipboard.GetDataObject().GetFormats())
                         {
-                            byte[] bytes = ms.ToArray();
-
-                            if (bytes == null)
+                            object obj = Clipboard.GetData(format);
+                            if (obj is MemoryStream ms)
                             {
-                                continue;
-                            }
+                                byte[] bytes = ms.ToArray();
 
-                            switch (format.ToUpper())
-                            {
-                                // "Sony Vegas Meta-Data 5.0" or "Vegas Meta-Data 5.0" for VEGAS Pro
-                                case "SONY VEGAS META-DATA 5.0" when Common.VegasVersion < 14:
-                                case "VEGAS META-DATA 5.0" when Common.VegasVersion > 13:
-                                    if (myVegas.Project.GetSelectedEvents<TrackEvent>().Count > 0)
-                                    {
-                                        pasteAttributes = true;
+                                if (bytes == null || bytes.Length == 0)
+                                {
+                                    continue;
+                                }
+
+                                switch (format.ToUpper())
+                                {
+                                    // "Sony Vegas Meta-Data 5.0" or "Vegas Meta-Data 5.0" for VEGAS Pro
+                                    case "SONY VEGAS META-DATA 5.0" when Common.VegasVersion < 14:
+                                    case "VEGAS META-DATA 5.0" when Common.VegasVersion > 13:
+                                        if (Settings.VegasData.SelectivelyPasteEventAttributes && myVegas.Project.GetSelectedEvents<TrackEvent>().Count > 0)
+                                        {
+                                            pasteAttributes = true;
+                                            success = true;
+                                        }
+                                        break;
+
+                                    // "REAPERMedia" for Cockos REAPER
+                                    case "REAPERMEDIA":
+                                        evs.AddRange(DoPaste_Clipboard_ReaperData(bytes, ref start));
                                         success = true;
-                                    }
-                                    break;
+                                        break;
 
-                                // "REAPERMedia" for Cockos REAPER
-                                case "REAPERMEDIA":
-                                    Settings.ReaperData.ChangeImportStart(myVegas, ref start);
-                                    evs.AddRange(DoPaste_Clipboard_ReaperData(bytes, start));
-                                    success = true;
-                                    break;
+                                    // "PProAE/Exchange/TrackItem" for Adobe Premiere Pro and Adobe After Effects (not be implemented...)
+                                    case "PPROAE/EXCHANGE/TRACKITEM":
 
-                                // "PProAE/Exchange/TrackItem" for Adobe Premiere Pro and Adobe After Effects (not be implemented...)
-                                case "PPROAE/EXCHANGE/TRACKITEM":
+                                        break;
 
-                                    break;
-
-                                default:
-                                    break;
+                                    default:
+                                        break;
+                                }
                             }
-                        }
 
-                        else if (Clipboard.ContainsText())
-                        {
-                            string str = Clipboard.GetText();
-                            evs.AddRange(TextMediaGenerator.GenerateTextEvents(start, length, str, 0, null));
-                            success = true;
-                        }
+                            else if (Clipboard.ContainsText())
+                            {
+                                evs.AddRange(DoPaste_Subtitles_Strings(Clipboard.GetText(), ref start, length));
+                                success = true;
+                            }
 
-                        if (success)
-                        {
-                            break;
+                            if (success)
+                            {
+                                break;
+                            }
                         }
                     }
                 }
@@ -123,6 +155,7 @@ namespace UltraPaste
                     {
                         ev.Selected = true;
                     }
+                    myVegas.UpdateUI();
                 }
             }
             if (projectFileToOpen != null)
@@ -156,28 +189,15 @@ namespace UltraPaste
             }
         }
 
-        public static void DoPaste_ClipboardImage(ref List<TrackEvent> evs, Timecode start, Timecode length)
+        public static void DoPaste_ClipboardImage(List<TrackEvent> evs, ref Timecode start, Timecode length, UltraPasteSettings.ClipboardImageSettings set = null)
         {
             string path = LastImageAndPath.Value;
-            string filePath = Environment.ExpandEnvironmentVariables(Regex.Replace(Settings.ClipboardImage.FilePath, @"%PROJECTFOLDER%", Path.GetDirectoryName(myVegas.Project.FilePath)?.Trim('\\', '/') ?? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), RegexOptions.IgnoreCase));
-            foreach (Match m in Regex.Matches(filePath, @"<.*?>"))
+            if (set == null)
             {
-                filePath = filePath?.Replace(m.Value, DateTime.Now.ToString(m.Value)?.Trim('<', '>'));
+                set = Settings.ClipboardImage;
             }
-            filePath = Path.GetFullPath(filePath);
-            string dir = Path.GetDirectoryName(filePath);
-            try
-            {
-                if (!Directory.Exists(dir))
-                {
-                    Directory.CreateDirectory(dir);
-                }
-            }
-            catch
-            {
-                filePath = Path.Combine(dir, "Clipboard", string.Format("{0}.png", DateTime.Now.ToString("yyyyMMdd_HHmmss")));
-                dir = Path.GetDirectoryName(filePath);
-            }
+            set.ChangeImportStart(myVegas, ref start);
+            string filePath = set.GetTrueFilePath();
 
             Image img = Clipboard.GetImage();
             if (img == null && Clipboard.ContainsData(DataFormats.Dib))
@@ -187,7 +207,7 @@ namespace UltraPaste
                     img = DibImageData.ConvertToBitmap(ms.ToArray());
                 }
             }
-            if (dir != Path.GetDirectoryName(path) || !img.IsSameTo(LastImageAndPath.Key))
+            if (Path.GetDirectoryName(filePath) != Path.GetDirectoryName(path) || !img.IsSameTo(LastImageAndPath.Key))
             {
                 path = filePath;
                 string ext = Path.GetExtension(path)?.ToLower();
@@ -195,10 +215,15 @@ namespace UltraPaste
             }
             LastImageAndPath.Key?.Dispose();
             LastImageAndPath = new KeyValuePair<Image, string>(img, path);
-            evs.AddRange(myVegas.GenerateEvents<VideoEvent>(path, start, length));
+            List<VideoEvent> addedEvents = myVegas.GenerateEvents<VideoEvent>(path, start, length);
+            if (set.CursorToEnd)
+            {
+                myVegas.RefreshCursorPosition(addedEvents.GetEndTimeFromEvents());
+            }
+            evs.AddRange(addedEvents);
         }
 
-        public static void DoPaste_FileDrop(ref List<TrackEvent> evs, Timecode start, Timecode length, out string projectFileToOpen, out string scriptFileToRun)
+        public static void DoPaste_FileDrop(List<TrackEvent> evs, Timecode start, Timecode length, out string projectFileToOpen, out string scriptFileToRun)
         {
             List<string> filePaths = Clipboard.GetFileDropList().GetFilePathsFromPathList();
             List<string> mediaPaths = new List<string>();
@@ -215,38 +240,39 @@ namespace UltraPaste
                 {
                     case ".veg":
                     case ".bak" when Path.GetExtension(Path.GetFileNameWithoutExtension(path))?.ToLower() == ".veg":
-                        if (Settings.VegImport.Type == 0)
+                        if (Settings.VegasData.VegImportType == 1)
                         {
-                            projectFileToOpen = path;
+                            mediaPaths.Add(path);
                         }
-                        else if (Settings.VegImport.Type == 2)
+                        else if (Settings.VegasData.VegImportType == 2)
                         {
                             myVegas.ImportMediaFromProject(path, false, false);
+                        }
+                        else
+                        {
+                            projectFileToOpen = path;
                         }
                         break;
 
                     case ".rpp":
-                        Settings.ReaperData.ChangeImportStart(myVegas, ref start);
-                        addedEvents = DoPaste_FileDrop_ReaperData(path, start);
+                        addedEvents = DoPaste_FileDrop_ReaperData(path, ref start);
                         break;
 
                     case ".srt":
                     case ".lrc":
                     case ".txt":
-                        Settings.SubtitlesImport.ChangeImportStart(myVegas, ref start);
-                        addedEvents = DoPaste_FileDrop_Subtitles(path, start);
+                        addedEvents = DoPaste_FileDrop_Subtitles(path, ref start, length);
                         break;
 
                     case ".psd":
-                        Settings.PsdImport.ChangeImportStart(myVegas, ref start);
-                        addedEvents = DoPaste_FileDrop_Psd(path, start, length);
+                        addedEvents = DoPaste_FileDrop_Psd(path, ref start, length);
                         break;
 
                     case ".cs":
                     case ".js":
                     case ".vb":
                     case ".dll":
-                        if (Settings.ScriptRun.Enabled)
+                        if (Settings.VegasData.RunScript)
                         {
                             scriptFileToRun = path;
                         }
@@ -275,77 +301,134 @@ namespace UltraPaste
                 return;
             }
 
-            Settings.MediaImport.ChangeImportStart(myVegas, ref start);
-            DoPaste_FileDrop_MediaFiles(ref evs, mediaPaths, start, length);
+            DoPaste_FileDrop_MediaFiles(ref evs, mediaPaths, ref start, length);
         }
 
-        public static List<TrackEvent> DoPaste_FileDrop_ReaperData(string path, Timecode start)
+        public static List<TrackEvent> DoPaste_FileDrop_ReaperData(string path, ref Timecode start, UltraPasteSettings.ReaperDataSettings set = null)
         {
-            return ReaperData.Parser.Parse(path).DoPaste_ReaperData(start);
+            return ReaperData.Parser.Parse(path).DoPaste_ReaperData(ref start, set);
         }
 
-        public static List<TrackEvent> DoPaste_Clipboard_ReaperData(byte[] bytes, Timecode start)
+        public static List<TrackEvent> DoPaste_Clipboard_ReaperData(byte[] bytes, ref Timecode start, UltraPasteSettings.ReaperDataSettings set = null)
         {
-            return ReaperData.Parser.Parse(bytes).DoPaste_ReaperData(start);
+            return ReaperData.Parser.Parse(bytes).DoPaste_ReaperData(ref start, set);
         }
 
-        public static List<TrackEvent> DoPaste_ReaperData(this ReaperData rd, Timecode start)
+        public static List<TrackEvent> DoPaste_ReaperData(this ReaperData rd, ref Timecode start, UltraPasteSettings.ReaperDataSettings set = null)
         {
-            List<TrackEvent> addedEvents = rd.GenerateEventsToVegas(start, Settings.ReaperData.CloseGap, Settings.ReaperData.AddVideoStreams);
-            if (Settings.ReaperData.CursorToEnd)
+            if (set == null)
+            {
+                set = Settings.ReaperData;
+            }
+            set.ChangeImportStart(myVegas, ref start);
+            List<TrackEvent> addedEvents = rd.GenerateEventsToVegas(start, set.CloseGap, set.AddVideoStreams);
+            if (set.CursorToEnd)
             {
                 myVegas.RefreshCursorPosition(addedEvents.GetEndTimeFromEvents());
             }
             return addedEvents;
         }
 
-        public static List<TrackEvent> DoPaste_FileDrop_Subtitles(string path, Timecode start)
+        public static List<TrackEvent> DoPaste_FileDrop_Subtitles(string path, ref Timecode start, Timecode length, UltraPasteSettings.SubtitlesImportSettings set = null)
+        {
+            return SubtitlesData.Parser.ParseFromFile(path, length).DoPaste_Subtitles(ref start, set);
+        }
+
+        public static List<TrackEvent> DoPaste_Subtitles_Strings(string str, ref Timecode start, Timecode length, UltraPasteSettings.SubtitlesImportSettings set = null)
+        {
+            return SubtitlesData.Parser.ParseFromStrings(str, length).DoPaste_Subtitles(ref start, set);
+        }
+
+        public static List<TrackEvent> DoPaste_Subtitles(this SubtitlesData subtitles, ref Timecode start, UltraPasteSettings.SubtitlesImportSettings set = null, bool isInputBox = false)
         {
             List<TrackEvent> addedEvents = new List<TrackEvent>();
             List<Region> regions = null;
-            SubtitlesData subtitles = SubtitlesData.Parser.ParseFromFile(path);
-            subtitles.SplitCharactersAndLines(Settings.SubtitlesImport.MaxCharacters, Settings.SubtitlesImport.IgnoreWord, Settings.SubtitlesImport.MaxLines);
-            if (Settings.SubtitlesImport.ImportType == 0 || Settings.SubtitlesImport.ImportType > 1)
+            if (set == null)
             {
-                addedEvents.AddRange(subtitles.GenerateEventsToVegas(start, Settings.SubtitlesImport.MediaGeneratorType, Settings.SubtitlesImport.PresetNames[Settings.SubtitlesImport.MediaGeneratorType], Settings.SubtitlesImport.CloseGap));
+                set = Settings.SubtitlesImport;
             }
-            if (Settings.SubtitlesImport.ImportType > 1)
+            set.ChangeImportStart(myVegas, ref start);
+            if (isInputBox)
+            {
+                subtitles.SplitCharactersAndLines(set.InputBoxMaxCharacters, set.InputBoxIgnoreWord, set.InputBoxMaxLines, set.InputBoxMultipleTracks);
+            }
+            else
+            {
+                subtitles.SplitCharactersAndLines(set.MaxCharacters, set.IgnoreWord, set.MaxLines, set.MultipleTracks);
+            }
+            if (set.AddTextMediaGenerators)
+            {
+                addedEvents.AddRange(subtitles.GenerateEventsToVegas(start, set.MediaGeneratorType, set.PresetNames[set.MediaGeneratorType], set.CloseGap));
+            }
+            if (set.AddRegions)
             {
                 regions = subtitles.GenerateRegionsToVegas(start);
             }
-            if (Settings.SubtitlesImport.CursorToEnd)
+            if (set.CursorToEnd)
             {
-                myVegas.RefreshCursorPosition(Settings.SubtitlesImport.ImportType == 1 ? regions.GetEndTimeFromMarkers() : addedEvents.GetEndTimeFromEvents());
+                myVegas.RefreshCursorPosition(!set.AddTextMediaGenerators && set.AddRegions ? regions.GetEndTimeFromMarkers() : addedEvents.GetEndTimeFromEvents());
             }
             return addedEvents;
         }
 
-        public static List<TrackEvent> DoPaste_FileDrop_Psd(string path, Timecode start, Timecode length)
+        public static List<TrackEvent> DoPaste_FileDrop_Psd(string path, ref Timecode start, Timecode length, UltraPasteSettings.PsdImportSettings set = null)
         {
             List<TrackEvent> addedEvents = myVegas.GenerateEvents<TrackEvent>(path, start, length);
-            if (Settings.PsdImport.ExpandAllLayers)
+            if (set == null)
+            {
+                set = Settings.PsdImport;
+            }
+            set.ChangeImportStart(myVegas, ref start);
+            if (set.ExpandAllLayers && addedEvents.Count > 0 && addedEvents[0]?.ActiveTake.Media.StreamCount(MediaType.Video) > 1)
             {
                 foreach (TrackEvent ev in addedEvents)
                 {
                     ev.Mute = true;
                 }
-                addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents, MediaType.Unknown, true));
+                addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents, MediaType.Unknown, true, -1, false, 1));
             }
-            if (Settings.PsdImport.CursorToEnd)
+            if (set.CursorToEnd)
             {
                 myVegas.RefreshCursorPosition(addedEvents.GetEndTimeFromEvents());
             }
             return addedEvents;
         }
 
-        public static void DoPaste_FileDrop_MediaFiles(ref List<TrackEvent> evs, List<string> paths, Timecode start, Timecode length)
+        public static void DoPaste_FileDrop_MediaFiles(ref List<TrackEvent> evs, List<string> paths, ref Timecode start, Timecode length, UltraPasteSettings.MediaImportSettings set = null)
         {
             List<Media> mediaList = new List<Media>();
 
             bool isImageSequence = false;
             string uniformExtension = paths.GetUniformExtention();
 
-            if (Settings.MediaImport.ImageSequence && (uniformExtension == ".png" || uniformExtension == ".jpg" || uniformExtension == ".bmp" || uniformExtension == ".gif"))
+            if (set == null)
+            {
+                set = Settings.MediaImport;
+            }
+
+            foreach (CustomMediaImportSettings cmis in Settings.Customs)
+            {
+                bool isMatch = true;
+                foreach (string path in paths)
+                {
+                    if (!Common.IsPathMatch(path, cmis.IncludedFiles))
+                    {
+                        isMatch = false;
+                        break;
+                    }
+                }
+                if (isMatch)
+                {
+                    set = cmis;
+                    break;
+                }
+            }
+
+            set.ChangeImportStart(myVegas, ref start);
+            Timecode startTime = start;
+
+
+            if (set.ImageSequence && (uniformExtension == ".png" || uniformExtension == ".jpg" || uniformExtension == ".bmp" || uniformExtension == ".gif"))
             {
                 string imageSequenceFirstFile = ImageSequenceValidator.GetValidFirstFileName(paths);
                 if (imageSequenceFirstFile != null)
@@ -365,9 +448,9 @@ namespace UltraPaste
                 mediaList = myVegas.GetValidMedia(paths);
             }
 
-            Timecode singleLength = evs.Count > 0 || mediaList.Count == 0 ? null : Settings.MediaImport.AddType == 0 ? Timecode.FromNanos(length.Nanos / mediaList.Count) : length;
-            MediaType type = Settings.MediaImport.StreamType == 1 ? MediaType.Video : Settings.MediaImport.StreamType == 2 ? MediaType.Audio : MediaType.Unknown;
-            if (Settings.MediaImport.AddType == 2)
+            Timecode singleLength = evs.Count > 0 || mediaList.Count == 0 || set.EventLengthType == 0 ? null : set.AddType == 0 && set.EventLengthType == 2 ? Timecode.FromNanos(length.Nanos / mediaList.Count) : length;
+            MediaType type = set.StreamType == 1 ? MediaType.Video : set.StreamType == 2 ? MediaType.Audio : MediaType.Unknown;
+            if (set.AddType == 2)
             {
                 List<TrackEvent> evsAsTake = myVegas.Project.GetSelectedEvents<TrackEvent>();
 
@@ -392,8 +475,8 @@ namespace UltraPaste
                         continue;
                     }
 
-                    List<TrackEvent> addedEvents = myVegas.Project.GenerateEvents(media, start, singleLength ?? maxLength, type);
-                    addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents));
+                    List<TrackEvent> addedEvents = myVegas.Project.GenerateEvents(media, startTime, singleLength ?? maxLength, type);
+                    addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents, type));
                     evsAsTake.AddRange(addedEvents);
                     evs.AddRange(addedEvents);
                 }
@@ -402,9 +485,9 @@ namespace UltraPaste
             {
                 foreach (Media media in mediaList)
                 {
-                    List<TrackEvent> addedEvents = myVegas.Project.GenerateEvents(media, start, singleLength, type);
-                    addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents));
-                    if (Settings.MediaImport.AddType == 1)
+                    List<TrackEvent> addedEvents = myVegas.Project.GenerateEvents(media, startTime, singleLength, type);
+                    addedEvents.AddRange(myVegas.Project.AddMissingStreams(addedEvents, type));
+                    if (set.AddType == 1)
                     {
                         foreach (TrackEvent ev in addedEvents)
                         {
@@ -413,16 +496,175 @@ namespace UltraPaste
                     }
                     else
                     {
-                        start = addedEvents.GetEndTimeFromEvents();
+                        startTime = addedEvents.GetEndTimeFromEvents();
                     }
 
                     evs.AddRange(addedEvents);
                 }
+                if (set.AddType == 1 && evs.Count > 0)
+                {
+                    TrackEventGroup g = evs[0].Group;
+                    if (g == null)
+                    {
+                        g = new TrackEventGroup(myVegas.Project);
+                        myVegas.Project.Groups.Add(g);
+                    }
+                    foreach (TrackEvent ev in evs)
+                    {
+                        if (!g.Contains(ev))
+                        {
+                            g.Add(ev);
+                        }
+                    }
+                }
             }
-            if (Settings.MediaImport.CursorToEnd)
+            if (set.CursorToEnd)
             {
                 myVegas.RefreshCursorPosition(evs.GetEndTimeFromEvents());
             }
+        }
+
+        public static void SaveSnapshotToClipboardAndFile(object o, EventArgs e)
+        {
+            myVegas.SaveSnapshot();
+            string path = Settings.ClipboardImage.GetTrueFilePath();
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
+            string ext = Path.GetExtension(path)?.ToLower();
+            if (myVegas.SaveSnapshot(path, ext == ".jpg" || ext == ".jpeg" ? ImageFileFormat.JPEG : ImageFileFormat.PNG) == RenderStatus.Complete && Clipboard.ContainsImage())
+            {
+                LastImageAndPath = new KeyValuePair<Image, string>(Clipboard.GetImage(), path);
+            }
+        }
+
+        public static void ExportSelectedEventsToReaperData(object o, EventArgs e)
+        {
+            byte[] rpData = ReaperData.Parser.SerializeToBytes(ReaperData.From(myVegas.Project.GetSelectedEvents<TrackEvent>()));
+            MemoryStream memoStream = new MemoryStream();
+            memoStream.Write(rpData, 0, rpData.Length);
+            Clipboard.SetData("REAPERMedia", memoStream);
+        }
+
+        public static void ExportSelectedTracksToReaperData(object o, EventArgs e)
+        {
+            byte[] rpData = ReaperData.Parser.SerializeToBytes(ReaperData.From(myVegas.Project.GetSelectedTracks<Track>()));
+            MemoryStream memoStream = new MemoryStream();
+            memoStream.Write(rpData, 0, rpData.Length);
+            Clipboard.SetData("REAPERMedia", memoStream);
+        }
+
+        public static void PsdAddOtherLayers(object o, EventArgs e)
+        {
+            List<VideoEvent> vEvents = new List<VideoEvent>();
+            vEvents.AddRange(myVegas.Project.GetSelectedEvents<VideoEvent>().Where(ev => Path.GetExtension(ev.ActiveTake?.MediaPath)?.ToLower() == ".psd"));
+            if (vEvents.Count == 0)
+            {
+                return;
+            }
+            using (UndoBlock undo = new UndoBlock(myVegas.Project, L.PsdAddOtherLayers))
+            {
+                myVegas.Project.AddMissingStreams(vEvents, MediaType.Unknown, true, -1, false, 0);
+            }
+        }
+
+        public static void SubtitlesApplyToSelectedEvents(object o, EventArgs e)
+        {
+            PlugInNode plugIn;
+            if ((plugIn = TextMediaGenerator.TextPlugIns[Settings.SubtitlesImport.MediaGeneratorType]) == null)
+            {
+                return;
+            }
+
+            List<VideoEvent> vEvents = myVegas.Project.GetSelectedEvents<VideoEvent>();
+            if (vEvents.Count == 0)
+            {
+                return;
+            }
+
+            List<Effect> efs = new List<Effect>();
+
+            foreach (VideoEvent vEvent in vEvents)
+            {
+                if (vEvent.ActiveTake?.Media.Generator?.PlugIn.IsOFX == true && vEvent.ActiveTake?.Media.Generator?.PlugIn?.UniqueID == plugIn.UniqueID)
+                {
+                    efs.Add(vEvent.ActiveTake?.Media.Generator);
+                }
+
+                foreach (Effect ef in vEvent.Effects)
+                {
+                    if (ef?.PlugIn.IsOFX == true && ef.PlugIn.UniqueID == plugIn.UniqueID)
+                    {
+                        efs.Add(ef);
+                    }
+                }
+            }
+
+            if (efs.Count == 0)
+            {
+                return;
+            }
+
+            using (UndoBlock undo = new UndoBlock(myVegas.Project, L.SubtitlesApplyToSelectedEvents))
+            {
+                foreach (Effect ef in efs)
+                {
+                    ef.SetTextPreset(Settings.SubtitlesImport.PresetNames[Settings.SubtitlesImport.MediaGeneratorType]);
+                }
+            }
+        }
+
+        public static void SubtitlesTitlesAndTextToProTypeTitler(object o, EventArgs e)
+        {
+            List<VideoEvent> vEvents = new List<VideoEvent>();
+            vEvents.AddRange(myVegas.Project.GetSelectedEvents<VideoEvent>().Where(ev => ev.ActiveTake?.Media.Generator?.PlugIn.UniqueID == TextMediaGenerator.PlugInTitlesAndText.UniqueID));
+            if (vEvents.Count == 0)
+            {
+                return;
+            }
+
+            Dictionary<Media, Media> mediaPairs = new Dictionary<Media, Media>();
+
+            using (UndoBlock undo = new UndoBlock(myVegas.Project, L.SubtitlesTitlesAndTextToProTypeTitler))
+            {
+                foreach (VideoEvent vEvent in vEvents)
+                {
+                    Media newMedia;
+                    Timecode offset = vEvent.ActiveTake.Offset;
+                    if ((newMedia = mediaPairs.ContainsKey(vEvent.ActiveTake.Media) ? mediaPairs[vEvent.ActiveTake.Media] : null) == null)
+                    {
+                        TextMediaGenerator.TextMediaProperties properties = TextMediaGenerator.TextMediaProperties.GetFromTitlesAndText(vEvent.ActiveTake.Media.Generator.OFXEffect);
+                        properties.MediaSize = (vEvent.ActiveTake.MediaStream as VideoStream)?.Size ?? properties.MediaSize;
+                        properties.MediaSeconds = vEvent.ActiveTake.MediaStream.Length.ToMilliseconds() / 1000;
+                        newMedia = properties.GenerateProTypeTitlerMedia();
+                        mediaPairs.Add(vEvent.ActiveTake.Media, newMedia);
+                    }
+                    if (newMedia == null)
+                    {
+                        continue;
+                    }
+                    vEvent.AddTake(newMedia.GetVideoStreamByIndex(0), true).Offset = offset;
+                }
+            }
+        }
+
+        public static void MediaAddMissingStreams(object o, EventArgs e)
+        {
+            List<TrackEvent> vEvents = myVegas.Project.GetSelectedEvents<TrackEvent>();
+            if (vEvents.Count == 0)
+            {
+                return;
+            }
+            using (UndoBlock undo = new UndoBlock(myVegas.Project, L.AddMissingStreams))
+            {
+                myVegas.Project.AddMissingStreams(vEvents);
+            }
+        }
+
+        public static void GenerateMixedVegasClipboardData(object o, EventArgs e)
+        {
+            Common.GenerateMixedVegasClipboardData();
         }
     }
 }
