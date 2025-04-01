@@ -41,7 +41,7 @@ namespace UltraPaste
                     Font = "Arial";
                     UltraPaste = "Ultra Paste!"; UltraPasteWindow = "Ultra Paste! - Window";
                     General = "General"; Language = "Language"; LanguageChange = "After changing the language, you need to reload UltraPaste windows and open them manually again.\n\nClose all UltraPaste windows?"; ExcludedFiles = "Excluded File Types"; OneClick = "One-Click"; SupportMe = "Support Me on Ko-fi"; CheckForUpdate = "Check For Update";
-                    StartPosition = "Start Pos"; CursorToEnd = "Move Cursor To End";
+                    StartPosition = "Start Pos"; CursorToEnd = "Move Cursor to End";
                     ClipboardImage = "Clipboard Image"; ClipboardImageFilePath = "File Path"; SaveSnapshotToClipboard = "Save Snap: Clip"; SaveSnapshotToClipboardAndFile = "Save Snap: Clip+File";
                     ReaperData = "REAPER Data"; CloseGap = "Close Start Gap"; AddVideoStreams = "Add Video Streams"; ExportSelectedEventsToReaperData = "Sel.Events to Reaper"; ExportSelectedTracksToReaperData = "Sel.Tracks to Reaper";
                     PsdImport = "PSD Images"; ExpandAllLayers = "Expand All Layers"; PsdAddOtherLayers = "Add Other Layers";

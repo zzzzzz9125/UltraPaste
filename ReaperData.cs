@@ -21,9 +21,9 @@ namespace UltraPaste
         private static readonly System.Reflection.Assembly assembly = typeof(Vegas).Assembly;
         private static readonly Type elastiqueStretchAttributes = assembly.GetType(string.Format("{0}.ElastiqueStretchAttributes", typeof(Vegas).Namespace)), timeStretchPitchShift = assembly.GetType(string.Format("{0}.TimeStretchPitchShift", typeof(Vegas).Namespace));
         private static readonly System.Reflection.PropertyInfo propertyElastiqueAttribute = typeof(AudioEvent).GetProperty("ElastiqueAttribute", elastiqueStretchAttributes),
-                                               propertyPitchSemis = typeof(AudioEvent).GetProperty("PitchSemis", typeof(double)),
-                                                   propertyMethod = typeof(AudioEvent).GetProperty("Method", timeStretchPitchShift),
-                                              propertyFormantLock = typeof(AudioEvent).GetProperty("FormantLock", typeof(bool));
+                                                                       propertyPitchSemis = typeof(AudioEvent).GetProperty("PitchSemis", typeof(double)),
+                                                                           propertyMethod = typeof(AudioEvent).GetProperty("Method", timeStretchPitchShift),
+                                                                      propertyFormantLock = typeof(AudioEvent).GetProperty("FormantLock", typeof(bool));
         public string ProjectFilePath
         {
             get { return projectFilePath; }

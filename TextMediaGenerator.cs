@@ -374,7 +374,7 @@ namespace UltraPaste
             return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
         }
 
-        unsafe public static List<VideoEvent> GenerateOfxEvents(PlugInNode plug, Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
+        public static List<VideoEvent> GenerateOfxEvents(PlugInNode plug, Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
         {
             if (plug == null)
             {

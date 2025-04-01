@@ -9,7 +9,6 @@ using System.IO;
 using System.Text;
 using Microsoft.Win32;
 using System.Collections.Generic;
-using System.Windows.Forms;
 
 namespace UltraPaste
 {

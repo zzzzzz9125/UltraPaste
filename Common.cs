@@ -7,13 +7,14 @@ using Sony.Vegas;
 using System;
 using System.IO;
 using System.Text;
+using System.Linq;
 using System.Diagnostics;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
-using System.Linq;
+
 
 #if TEST
 public static class S
@@ -192,6 +193,36 @@ public static class Common
             img2.Save(ms2, System.Drawing.Imaging.ImageFormat.Png);
             return ms1.IsSameTo(ms2);
         }
+    }
+
+    public static bool IsSameTo(this System.Drawing.Image img, byte[] bytes)
+    {
+        if (img == null || bytes == null)
+        {
+            return false;
+        }
+        using (MemoryStream ms = new MemoryStream())
+        {
+            img.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            return ms.IsSameTo(bytes);
+        }
+    }
+
+    public static bool IsSameTo(this Stream stream, byte[] bytes)
+    {
+        byte[] streamBytes;
+        if (stream is MemoryStream ms)
+        {
+            streamBytes = ms.ToArray();
+        }
+        else
+        {
+            streamBytes = new byte[stream.Length];
+            stream.Seek(0, SeekOrigin.Begin);
+            stream.Read(streamBytes, 0, streamBytes.Length);
+            stream.Seek(0, SeekOrigin.Begin);
+        }
+        return Convert.ToBase64String(streamBytes) == Convert.ToBase64String(bytes);
     }
 
     public static bool IsSameTo(this Stream stream1, Stream stream2)

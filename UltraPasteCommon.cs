@@ -15,16 +15,15 @@ using System.Collections.Generic;
 
 namespace UltraPaste
 {
-    using static UltraPaste.UltraPasteSettings;
     using static VirtualKeyboard;
     public static class UltraPasteCommon
     {
         public static string SettingsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Documents", "Vegas Application Extensions", "UltraPaste");
         public static UltraPasteSettings Settings = UltraPasteSettings.LoadFromFile();
-        public const string VERSION = "v1.00";
+        public const string VERSION = "v1.01 Beta";
         public static Vegas Vegas { get { return myVegas; } set { myVegas = value; } }
         private static Vegas myVegas;
-        public static KeyValuePair<Image, string> LastImageAndPath = new KeyValuePair<Image, string>();
+        public static KeyValuePair<string, byte[]> LastPathAndImageBytes = new KeyValuePair<string, byte[]>();
         public static TextBox InputBoxTextBox { get; set; }
         public static SubtitlesData InputBoxSubtitlesData { get; set; }
         public static string InputBoxString { get; set; }
@@ -191,7 +190,7 @@ namespace UltraPaste
 
         public static void DoPaste_ClipboardImage(List<TrackEvent> evs, ref Timecode start, Timecode length, UltraPasteSettings.ClipboardImageSettings set = null)
         {
-            string path = LastImageAndPath.Value;
+            string path = LastPathAndImageBytes.Key;
             if (set == null)
             {
                 set = Settings.ClipboardImage;
@@ -199,22 +198,50 @@ namespace UltraPaste
             set.ChangeImportStart(myVegas, ref start);
             string filePath = set.GetTrueFilePath();
 
-            Image img = Clipboard.GetImage();
-            if (img == null && Clipboard.ContainsData(DataFormats.Dib))
+            Image img = null;
+            byte[] imgBytes = null;
+            if (Clipboard.ContainsData("PNG"))
             {
-                using (MemoryStream ms = Clipboard.GetData(DataFormats.Dib) as MemoryStream)
+                using (MemoryStream ms = Clipboard.GetData("PNG") as MemoryStream)
                 {
-                    img = DibImageData.ConvertToBitmap(ms.ToArray());
+                    imgBytes = ms.ToArray();
                 }
             }
-            if (Path.GetDirectoryName(filePath) != Path.GetDirectoryName(path) || !img.IsSameTo(LastImageAndPath.Key))
+            else
+            {
+                img = Clipboard.GetImage();
+                if (img == null && Clipboard.ContainsData(DataFormats.Dib))
+                {
+                    using (MemoryStream ms = Clipboard.GetData(DataFormats.Dib) as MemoryStream)
+                    {
+                        img = DibImageData.ConvertToBitmap(ms.ToArray());
+                    }
+                }
+                if (img != null)
+                {
+                    using (MemoryStream ms = Clipboard.GetData(DataFormats.Dib) as MemoryStream)
+                    {
+                        img.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                        imgBytes = ms.ToArray();
+                    }
+                }
+            }
+
+            if (imgBytes?.Length > 0 && Path.GetDirectoryName(filePath) != Path.GetDirectoryName(path) || LastPathAndImageBytes.Value == null || Convert.ToBase64String(imgBytes) != Convert.ToBase64String(LastPathAndImageBytes.Value))
             {
                 path = filePath;
                 string ext = Path.GetExtension(path)?.ToLower();
-                img.Save(path, ext == ".jpg" || ext == ".jpeg" ? System.Drawing.Imaging.ImageFormat.Jpeg : ext == ".bmp" ? System.Drawing.Imaging.ImageFormat.Bmp : ext == ".gif" ? System.Drawing.Imaging.ImageFormat.Gif : System.Drawing.Imaging.ImageFormat.Png);
+                if (img != null)
+                {
+                    img.Save(path, ext == ".jpg" || ext == ".jpeg" ? System.Drawing.Imaging.ImageFormat.Jpeg : ext == ".bmp" ? System.Drawing.Imaging.ImageFormat.Bmp : ext == ".gif" ? System.Drawing.Imaging.ImageFormat.Gif : System.Drawing.Imaging.ImageFormat.Png);
+                }
+                else
+                {
+                    File.WriteAllBytes(path, imgBytes);
+                }
+                LastPathAndImageBytes = new KeyValuePair<string, byte[]>(path, imgBytes);
             }
-            LastImageAndPath.Key?.Dispose();
-            LastImageAndPath = new KeyValuePair<Image, string>(img, path);
+
             List<VideoEvent> addedEvents = myVegas.GenerateEvents<VideoEvent>(path, start, length);
             if (set.CursorToEnd)
             {
@@ -225,7 +252,7 @@ namespace UltraPaste
 
         public static void DoPaste_FileDrop(List<TrackEvent> evs, Timecode start, Timecode length, out string projectFileToOpen, out string scriptFileToRun)
         {
-            List<string> filePaths = Clipboard.GetFileDropList().GetFilePathsFromPathList();
+            List<string> filePaths = Common.GetFilePathsFromPathList(Clipboard.GetFileDropList());
             List<string> mediaPaths = new List<string>();
             projectFileToOpen = null;
             scriptFileToRun = null;
@@ -406,7 +433,7 @@ namespace UltraPaste
                 set = Settings.MediaImport;
             }
 
-            foreach (CustomMediaImportSettings cmis in Settings.Customs)
+            foreach (UltraPasteSettings.CustomMediaImportSettings cmis in Settings.Customs)
             {
                 bool isMatch = true;
                 foreach (string path in paths)
@@ -535,7 +562,17 @@ namespace UltraPaste
             string ext = Path.GetExtension(path)?.ToLower();
             if (myVegas.SaveSnapshot(path, ext == ".jpg" || ext == ".jpeg" ? ImageFileFormat.JPEG : ImageFileFormat.PNG) == RenderStatus.Complete && Clipboard.ContainsImage())
             {
-                LastImageAndPath = new KeyValuePair<Image, string>(Clipboard.GetImage(), path);
+                Image img = Clipboard.GetImage();
+                byte[] imgBytes = null;
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    img.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    imgBytes = ms.ToArray();
+                }
+                if (imgBytes?.Length > 0)
+                {
+                    LastPathAndImageBytes = new KeyValuePair<string, byte[]>(path, imgBytes);
+                }
             }
         }
 

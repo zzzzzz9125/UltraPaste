@@ -10,7 +10,6 @@ using System.Text;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using static UltraPaste.SubtitlesData;
 
 namespace UltraPaste
 {
