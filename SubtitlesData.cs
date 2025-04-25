@@ -10,6 +10,8 @@ using System.Text;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
+using System.Linq;
 
 namespace UltraPaste
 {
@@ -173,10 +175,14 @@ namespace UltraPaste
         public List<VideoEvent> GenerateEventsToVegas(Timecode start, int type = 0, string presetName = null, bool closeGap = false, bool useMultipleSelectedTracks = false)
         {
             List<VideoEvent> evs = new List<VideoEvent>();
+            if (Subtitles.Count == 0)
+            {
+                return evs;
+            }
 
             if (closeGap)
             {
-                TimeSpan offset = TimeSpan.MaxValue;
+                TimeSpan offset = Subtitles[0].Start;
                 foreach (Subtitle subtitle in Subtitles)
                 {
                     if (subtitle.Start < offset)
@@ -221,9 +227,24 @@ namespace UltraPaste
             return evs;
         }
 
-        public List<Region> GenerateRegionsToVegas(Timecode start)
+        public List<Region> GenerateRegionsToVegas(Timecode start, bool closeGap)
         {
             List<Region> regions = new List<Region>();
+
+            if (closeGap)
+            {
+                TimeSpan offset = Subtitles[0].Start;
+                foreach (Subtitle subtitle in Subtitles)
+                {
+                    if (subtitle.Start < offset)
+                    {
+                        offset = subtitle.Start;
+                    }
+                }
+                start -= Timecode.FromMilliseconds(offset.TotalMilliseconds);
+            }
+
+
             foreach (Subtitle subtitle in Subtitles)
             {
                 Timecode subStart = Timecode.FromMilliseconds(subtitle.Start.TotalMilliseconds) + start, subLength = Timecode.FromMilliseconds(subtitle.Length.TotalMilliseconds);
@@ -251,7 +272,7 @@ namespace UltraPaste
                 }
                 else if (ext == ".txt")
                 {
-                    return ParseFromStrings(Encoding.UTF8.GetString(File.ReadAllBytes(path)), length);
+                    return ParseFromStrings(File.ReadAllText(path), length);
                 }
                 else
                 {
@@ -279,7 +300,7 @@ namespace UltraPaste
             public static SubtitlesData ParseFromSrt(string path)
             {
                 SubtitlesData data = new SubtitlesData() { IsFromStrings = false };
-                string content = Encoding.UTF8.GetString(File.ReadAllBytes(path));
+                string content = File.ReadAllText(path);
                 string[] lines = content.Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries);
 
                 foreach (string line in lines)
@@ -327,7 +348,7 @@ namespace UltraPaste
             public static SubtitlesData ParseFromLrc(string path)
             {
                 SubtitlesData data = new SubtitlesData() { IsFromStrings = false };
-                string content = Encoding.UTF8.GetString(File.ReadAllBytes(path));
+                string content = File.ReadAllText(path);
                 string[] lines = content.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
 
                 Subtitle lastSub = null;
@@ -352,8 +373,7 @@ namespace UltraPaste
 
             private static Subtitle ParseLrcSubtitle(string str)
             {
-                string[] tokens = str.Split(new[] { "[", "]" }, StringSplitOptions.RemoveEmptyEntries);
-
+                string[] tokens = str.Split(new[] { '[', ']' }, StringSplitOptions.RemoveEmptyEntries);
                 if (tokens.Length == 0 || !TryParseLrcTimeCode(tokens[0], out TimeSpan start))
                 {
                     return null;

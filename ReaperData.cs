@@ -348,7 +348,7 @@ namespace UltraPaste
 
                     Media media = UltraPasteCommon.Vegas.GetValidMedia(item.Source.FilePath);
 
-                    if (item.Source is ReaperSourceSection)
+                    if (media != null && item.Source is ReaperSourceSection)
                     {
                         ReaperSourceSection section = item.Source as ReaperSourceSection;
                         bool reverse = section.Mode > 0;

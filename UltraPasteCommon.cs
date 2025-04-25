@@ -30,13 +30,13 @@ namespace UltraPaste
 
         public static void DoPaste(bool isSubtitlesInput = false)
         {
-            string projectFileToOpen = null, scriptFileToRun = null;
-            bool pasteAttributes = false;
-
             if (Clipboard.GetDataObject() == null)
             {
                 return;
             }
+
+            string projectFileToOpen = null, scriptFileToRun = null;
+            bool pasteAttributes = false;
 
             using (UndoBlock undo = new UndoBlock(myVegas.Project, L.UltraPaste))
             {
@@ -243,6 +243,19 @@ namespace UltraPaste
             }
 
             List<VideoEvent> addedEvents = myVegas.GenerateEvents<VideoEvent>(path, start, length);
+            foreach (VideoEvent ev in addedEvents)
+            {
+                if (ev.ActiveTake?.Media?.HasVideo() == true)
+                {
+                    foreach (MediaStream ms in ev.ActiveTake.Media.Streams)
+                    {
+                        if (ms is VideoStream vs)
+                        {
+                            vs.AlphaChannel = VideoAlphaType.Straight;
+                        }
+                    }
+                }
+            }
             if (set.CursorToEnd)
             {
                 myVegas.RefreshCursorPosition(addedEvents.GetEndTimeFromEvents());
@@ -389,7 +402,7 @@ namespace UltraPaste
             }
             if (set.AddRegions)
             {
-                regions = subtitles.GenerateRegionsToVegas(start);
+                regions = subtitles.GenerateRegionsToVegas(start, set.CloseGap);
             }
             if (set.CursorToEnd)
             {
@@ -475,7 +488,27 @@ namespace UltraPaste
                 mediaList = myVegas.GetValidMedia(paths);
             }
 
-            Timecode singleLength = evs.Count > 0 || mediaList.Count == 0 || set.EventLengthType == 0 ? null : set.AddType == 0 && set.EventLengthType == 2 ? Timecode.FromNanos(length.Nanos / mediaList.Count) : length;
+            int eventLengthType = set.EventLengthType;
+            if (eventLengthType == 0)
+            {
+                bool isStaticImage = true;
+
+                foreach (Media m in mediaList)
+                {
+                    if (m.Length.Nanos > 0)
+                    {
+                        isStaticImage = false;
+                        break;
+                    }
+                }
+
+                if (isStaticImage)
+                {
+                    eventLengthType = 2;
+                }
+            }
+
+            Timecode singleLength = evs.Count > 0 || mediaList.Count == 0 || eventLengthType == 0 ? null : set.AddType == 0 && eventLengthType == 2 ? Timecode.FromNanos(length.Nanos / mediaList.Count) : length;
             MediaType type = set.StreamType == 1 ? MediaType.Video : set.StreamType == 2 ? MediaType.Audio : MediaType.Unknown;
             if (set.AddType == 2)
             {

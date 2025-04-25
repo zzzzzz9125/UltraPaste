@@ -316,7 +316,6 @@ public static class Common
         IDataObject oldData = Clipboard.GetDataObject();
         DataObject newData = new DataObject();
 
-
         Dictionary<string, object> dic = new Dictionary<string, object>
         {
             { vegasDataStr, null }, { sonyVegasDataStr, null }, { vegasMetaDataStr, null }, { sonyVegasMetaDataStr, null }
