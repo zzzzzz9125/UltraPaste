@@ -6,9 +6,10 @@ using Sony.Vegas;
 
 using System;
 using System.IO;
+using System.Windows.Forms;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using System.Windows.Forms;
+
 
 namespace UltraPaste
 {

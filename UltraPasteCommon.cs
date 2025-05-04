@@ -18,7 +18,7 @@ namespace UltraPaste
     using static VirtualKeyboard;
     public static class UltraPasteCommon
     {
-        public static string SettingsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Documents", "Vegas Application Extensions", "UltraPaste");
+        public static string SettingsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Vegas Application Extensions", "UltraPaste");
         public static UltraPasteSettings Settings = UltraPasteSettings.LoadFromFile();
         public const string VERSION = "v1.01 Beta";
         public static Vegas Vegas { get { return myVegas; } set { myVegas = value; } }

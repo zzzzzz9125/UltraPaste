@@ -6,12 +6,9 @@ using Sony.Vegas;
 
 using System;
 using System.IO;
-using System.Text;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using System.Windows.Forms;
-using System.Linq;
 
 namespace UltraPaste
 {
@@ -243,7 +240,6 @@ namespace UltraPaste
                 }
                 start -= Timecode.FromMilliseconds(offset.TotalMilliseconds);
             }
-
 
             foreach (Subtitle subtitle in Subtitles)
             {
