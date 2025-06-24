@@ -11,7 +11,7 @@
 **Supported Versions:** Sony VEGAS Pro 13 - Magix VEGAS Pro 22  
 
 ### How to Install
-1. Go to [Releases](https://github.com/zzzzzz9125/UltraPaste/Releases), download and unzip the `.zip` file. Place all files in the extension folder like:  
+1. Go to [Releases](https://github.com/zzzzzz9125/UltraPaste/Releases), download and unzip the `.zip` file. Select `UltraPaste.dll` (or `UltraPaste_13.dll` for Sony VEGAS Pro 13) and `UltraPaste.png`, and copy & paste them into the extension folder:
    - `C:\ProgramData\Vegas Pro\Application Extensions\`  
    - or `C:\ProgramData\Sony\Vegas Pro\Application Extensions\` for Sony
 
@@ -53,7 +53,7 @@ Bind a keyboard shortcut (**Recommended:** `Ctrl+Shift+V`) under **Options → C
   - Project Start  
 - **Move Cursor to End:** Auto-shift cursor to the end of new Events.  
 - **File Path:**  
-  - Default: `%PROJECTFOLDER%\Clipboard\<yyyyMMdd_HHmmss>.png`
+  - Default: `Clipboard\<yyyyMMdd_HHmmss>.png` (= `%PROJECTFOLDER%\Clipboard\<yyyyMMdd_HHmmss>.png`)
   - You should separate the timecode with "<>". Timecode formatting rules: [Microsoft Docs](https://learn.microsoft.com/zh-cn/dotnet/api/system.datetime.tostring).  
 
 #### REAPER Data
