@@ -5,8 +5,6 @@ using Sony.Vegas;
 #endif
 
 using System;
-using System.IO;
-using System.Linq;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
@@ -33,7 +31,7 @@ namespace UltraPaste
                         LineAlignment = StringAlignment.Center,
                         Alignment = StringAlignment.Center
                     };
-                    Font font = new Font(L.Font, 9);
+                    Font font = new Font(I18n.Translation.Font, 9);
                     SolidBrush sb = new SolidBrush(Common.UIColors[1]);
                     for (int i = 0; i < TabCount; i++)
                     {
@@ -71,7 +69,7 @@ namespace UltraPaste
                 AutoSize = true;
                 AutoSizeMode = AutoSizeMode.GrowAndShrink;
                 Dock = DockStyle.Fill;
-                Text = L.OneClick;
+                Text = I18n.Translation.OneClick;
                 ForeColor = Common.UIColors[1];
 
                 oneClickPanel = new TableLayoutPanel
@@ -105,12 +103,12 @@ namespace UltraPaste
 
             public static UltraTableLayoutPanel From(UltraPasteSettings.GeneralSettings set, ContainerControl formControl, bool addOneClickGroup = true)
             {
-                UltraTableLayoutPanel p = new UltraTableLayoutPanel() { Name = L.General };
+                UltraTableLayoutPanel p = new UltraTableLayoutPanel() { Name = I18n.Translation.General };
 
                 Label label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.Language,
+                    Text = I18n.Translation.Language,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -120,7 +118,7 @@ namespace UltraPaste
                 {
                     AutoSize = true,
                     Margin = new Padding(9, 6, 11, 6),
-                    DataSource = new BindingSource(L.LanguageList, null),
+                    DataSource = new BindingSource(I18n.LanguageDictionary, null),
                     ValueMember = "Key",
                     DisplayMember = "Value",
                     DropDownStyle = ComboBoxStyle.DropDownList,
@@ -132,7 +130,7 @@ namespace UltraPaste
                 label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.ExcludedFiles,
+                    Text = I18n.Translation.ExcludedFiles,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -156,9 +154,9 @@ namespace UltraPaste
                         {
                             form.Load += (o, e) =>
                             {
-                                if (L.LanguageList.ContainsKey(set?.CurrentLanguage))
+                                if (I18n.LanguageDictionary.ContainsKey(I18n.Settings.Current))
                                 {
-                                    combo.SelectedValue = set?.CurrentLanguage;
+                                    combo.SelectedValue = I18n.Settings.Current;
                                 }
                             };
                         }
@@ -166,9 +164,9 @@ namespace UltraPaste
                         {
                             control.Load += (o, e) =>
                             {
-                                if (L.LanguageList.ContainsKey(set?.CurrentLanguage))
+                                if (I18n.LanguageDictionary.ContainsKey(I18n.Settings.Current))
                                 {
-                                    combo.SelectedValue = set?.CurrentLanguage;
+                                    combo.SelectedValue = I18n.Settings.Current;
                                 }
                             };
                         }
@@ -177,16 +175,17 @@ namespace UltraPaste
                     combo.SelectedIndexChanged += (o, e) =>
                     {
                         string key = (combo.SelectedItem as KeyValuePair<string, string>?)?.Key;
-                        if (L.LanguageList.ContainsKey(key))
+                        if (I18n.LanguageDictionary.ContainsKey(key))
                         {
-                            if (set.CurrentLanguage == key)
+                            if (I18n.Settings.Current == key)
                             {
                                 return;
                             }
-                            set.CurrentLanguage = key;
-                            L.Localize();
+                            I18n.Settings.Current = key;
+                            I18n.SaveSettingsToXml();
+                            I18n.Localize();
 
-                            if (MessageBox.Show(L.LanguageChange, L.UltraPaste, MessageBoxButtons.OKCancel) == DialogResult.OK)
+                            if (MessageBox.Show(I18n.Translation.LanguageChange, I18n.Translation.UltraPaste, MessageBoxButtons.OKCancel) == DialogResult.OK)
                             {
                                 if (UltraPasteCommon.Vegas.FindDockView("UltraPaste_Window", out IDockView dock) && dock is DockableControl dc)
                                 {
@@ -214,7 +213,7 @@ namespace UltraPaste
 
                     Button button = new Button
                     {
-                        Text = L.SupportMe,
+                        Text = I18n.Translation.SupportMe,
                         Margin = new Padding(3, 0, 3, 9),
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoSize = true,
@@ -227,13 +226,13 @@ namespace UltraPaste
 
                     button.Click += (o, e) =>
                     {
-                        string link = L.Language == "zh" ? @"https://afdian.tv/a/zzzzzz9125" : @"https://ko-fi.com/zzzzzz9125";
+                        string link = I18n.Translation.Language == "zh" ? @"https://afdian.tv/a/zzzzzz9125" : @"https://ko-fi.com/zzzzzz9125";
                         System.Diagnostics.Process.Start(link);
                     };
 
                     button = new Button
                     {
-                        Text = L.CheckForUpdate,
+                        Text = I18n.Translation.CheckForUpdate,
                         Margin = new Padding(3, 0, 3, 9),
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoSize = true,
@@ -260,12 +259,12 @@ namespace UltraPaste
             public static UltraTableLayoutPanel From(UltraPasteSettings.ClipboardImageSettings set, ContainerControl formControl, bool addOneClickGroup = true)
             {
                 UltraTableLayoutPanel p = FromBaseImport(set, formControl);
-                p.Name = L.ClipboardImage;
+                p.Name = I18n.Translation.ClipboardImage;
 
                 Label label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.ClipboardImageFilePath,
+                    Text = I18n.Translation.ClipboardImageFilePath,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -296,7 +295,7 @@ namespace UltraPaste
 
                     Button button = new Button
                     {
-                        Text = L.SaveSnapshotToClipboard,
+                        Text = I18n.Translation.SaveSnapshotToClipboard,
                         Margin = new Padding(3, 0, 3, 9),
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoSize = true,
@@ -311,7 +310,7 @@ namespace UltraPaste
 
                     button = new Button
                     {
-                        Text = L.SaveSnapshotToClipboardAndFile,
+                        Text = I18n.Translation.SaveSnapshotToClipboardAndFile,
                         Margin = new Padding(3, 0, 3, 9),
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoSize = true,
@@ -335,11 +334,11 @@ namespace UltraPaste
             public static UltraTableLayoutPanel From(UltraPasteSettings.ReaperDataSettings set, ContainerControl formControl, bool addOneClickGroup = true)
             {
                 UltraTableLayoutPanel p = FromBaseImport(set, formControl);
-                p.Name = L.ReaperData;
+                p.Name = I18n.Translation.ReaperData;
 
                 CheckBox closeGap = new CheckBox
                 {
-                    Text = L.CloseGap,
+                    Text = I18n.Translation.CloseGap,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.CloseGap ?? true
@@ -349,7 +348,7 @@ namespace UltraPaste
 
                 CheckBox addVideoStreams = new CheckBox
                 {
-                    Text = L.AddVideoStreams,
+                    Text = I18n.Translation.AddVideoStreams,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.AddVideoStreams ?? true
@@ -378,7 +377,7 @@ namespace UltraPaste
 
                     Button button = new Button
                     {
-                        Text = L.ExportSelectedEventsToReaperData,
+                        Text = I18n.Translation.ExportSelectedEventsToReaperData,
                         Margin = new Padding(3, 0, 3, 9),
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoSize = true,
@@ -393,7 +392,7 @@ namespace UltraPaste
 
                     button = new Button
                     {
-                        Text = L.ExportSelectedTracksToReaperData,
+                        Text = I18n.Translation.ExportSelectedTracksToReaperData,
                         Margin = new Padding(3, 0, 3, 9),
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoSize = true,
@@ -417,11 +416,11 @@ namespace UltraPaste
             public static UltraTableLayoutPanel From(UltraPasteSettings.PsdImportSettings set, ContainerControl formControl, bool addOneClickGroup = true)
             {
                 UltraTableLayoutPanel p = FromBaseImport(set, formControl);
-                p.Name = L.PsdImport;
+                p.Name = I18n.Translation.PsdImport;
 
                 CheckBox check = new CheckBox
                 {
-                    Text = L.ExpandAllLayers,
+                    Text = I18n.Translation.ExpandAllLayers,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.ExpandAllLayers ?? true
@@ -445,7 +444,7 @@ namespace UltraPaste
 
                     Button button = new Button
                     {
-                        Text = L.PsdAddOtherLayers,
+                        Text = I18n.Translation.PsdAddOtherLayers,
                         Margin = new Padding(3, 0, 3, 9),
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoSize = true,
@@ -471,7 +470,7 @@ namespace UltraPaste
             {
                 UltraTableLayoutPanel p = new UltraTableLayoutPanel
                 {
-                    Name = L.SubtitlesInputBox,
+                    Name = I18n.Translation.SubtitlesInputBox,
                     RowCount = 6
                 };
                 p.RowStyles.Add(new RowStyle(SizeType.Percent, 20));
@@ -485,7 +484,7 @@ namespace UltraPaste
                     AutoSize = true,
                     Margin = new Padding(9, 6, 11, 6),
                     Text = "",
-                    Font = new Font(L.Font, 10),
+                    Font = new Font(I18n.Translation.Font, 10),
                     Dock = DockStyle.Fill,
                     Multiline = true,
                     BackColor = Common.UIColors[1].R > 0x7F ? Common.UIColors[0] : Common.UIColors[1],
@@ -498,7 +497,7 @@ namespace UltraPaste
                 Label label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.SubtitlesMaxCharacters,
+                    Text = I18n.Translation.SubtitlesMaxCharacters,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -514,7 +513,7 @@ namespace UltraPaste
 
                 CheckBox ignoreWord = new CheckBox
                 {
-                    Text = L.SubtitlesIgnoreWord,
+                    Text = I18n.Translation.SubtitlesIgnoreWord,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.InputBoxIgnoreWord ?? false
@@ -525,7 +524,7 @@ namespace UltraPaste
                 label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.SubtitlesMaxLines,
+                    Text = I18n.Translation.SubtitlesMaxLines,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -541,7 +540,7 @@ namespace UltraPaste
 
                 CheckBox multipleTracks = new CheckBox
                 {
-                    Text = L.SubtitlesMultipleTracks,
+                    Text = I18n.Translation.SubtitlesMultipleTracks,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.InputBoxMultipleTracks ?? false
@@ -550,7 +549,7 @@ namespace UltraPaste
 
                 CheckBox useUniversal = new CheckBox
                 {
-                    Text = L.SubtitlesInputBoxUseUniversal,
+                    Text = I18n.Translation.SubtitlesInputBoxUseUniversal,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.InputBoxUseUniversal ?? true
@@ -559,7 +558,7 @@ namespace UltraPaste
 
                 Button button = new Button
                 {
-                    Text = L.SubtitlesInputBoxApplyTextSplitting,
+                    Text = I18n.Translation.SubtitlesInputBoxApplyTextSplitting,
                     Margin = new Padding(3, 0, 3, 9),
                     TextAlign = ContentAlignment.MiddleCenter,
                     AutoSize = true,
@@ -573,7 +572,7 @@ namespace UltraPaste
 
                 Button buttonAdd = new Button
                 {
-                    Text = L.SubtitlesInputBoxAddToTimeline,
+                    Text = I18n.Translation.SubtitlesInputBoxAddToTimeline,
                     Margin = new Padding(3, 0, 3, 9),
                     TextAlign = ContentAlignment.MiddleCenter,
                     AutoSize = true,
@@ -590,7 +589,7 @@ namespace UltraPaste
                     AutoSize = true,
                     Margin = new Padding(9, 6, 11, 6),
                     Text = "",
-                    Font = new Font(L.Font, 15),
+                    Font = new Font(I18n.Translation.Font, 15),
                     Dock = DockStyle.Fill,
                     Multiline = true,
                     ScrollBars = ScrollBars.Vertical,
@@ -679,7 +678,7 @@ namespace UltraPaste
 
                     buttonAdd.Click += (o, e) =>
                     {
-                        using (UndoBlock undo = new UndoBlock(UltraPasteCommon.Vegas.Project, L.SubtitlesInputBox))
+                        using (UndoBlock undo = new UndoBlock(UltraPasteCommon.Vegas.Project, I18n.Translation.SubtitlesInputBox))
                         {
                             UltraPasteCommon.DoPaste(true);
                         }
@@ -699,12 +698,12 @@ namespace UltraPaste
             public static UltraTableLayoutPanel From(UltraPasteSettings.SubtitlesImportSettings set, ContainerControl formControl, bool addOneClickGroup = true)
             {
                 UltraTableLayoutPanel p = FromBaseImport(set, formControl);
-                p.Name = L.SubtitlesImport;
+                p.Name = I18n.Translation.SubtitlesImport;
 
                 Label label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.TextMediaGenerator,
+                    Text = I18n.Translation.TextMediaGenerator,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -723,7 +722,7 @@ namespace UltraPaste
 
                 CheckBox addTextMediaGenerators = new CheckBox
                 {
-                    Text = L.AddTextMediaGenerators,
+                    Text = I18n.Translation.AddTextMediaGenerators,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.AddTextMediaGenerators ?? true
@@ -734,7 +733,7 @@ namespace UltraPaste
                 label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.TextMediaGeneratorPresetName,
+                    Text = I18n.Translation.TextMediaGeneratorPresetName,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -749,7 +748,7 @@ namespace UltraPaste
 
                 CheckBox addRegions = new CheckBox
                 {
-                    Text = L.AddRegions,
+                    Text = I18n.Translation.AddRegions,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.AddRegions ?? false
@@ -760,7 +759,7 @@ namespace UltraPaste
                 label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.SubtitlesMaxCharacters,
+                    Text = I18n.Translation.SubtitlesMaxCharacters,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -776,7 +775,7 @@ namespace UltraPaste
 
                 CheckBox ignoreWord = new CheckBox
                 {
-                    Text = L.SubtitlesIgnoreWord,
+                    Text = I18n.Translation.SubtitlesIgnoreWord,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.IgnoreWord ?? false
@@ -787,7 +786,7 @@ namespace UltraPaste
                 label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.SubtitlesMaxLines,
+                    Text = I18n.Translation.SubtitlesMaxLines,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -803,7 +802,7 @@ namespace UltraPaste
 
                 CheckBox multipleTracks = new CheckBox
                 {
-                    Text = L.SubtitlesMultipleTracks,
+                    Text = I18n.Translation.SubtitlesMultipleTracks,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.MultipleTracks ?? false
@@ -814,7 +813,7 @@ namespace UltraPaste
                 label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.SubtitlesDefaultLength,
+                    Text = I18n.Translation.SubtitlesDefaultLength,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -830,7 +829,7 @@ namespace UltraPaste
 
                 CheckBox closeGap = new CheckBox
                 {
-                    Text = L.CloseGap,
+                    Text = I18n.Translation.CloseGap,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.CloseGap ?? true
@@ -951,7 +950,7 @@ namespace UltraPaste
 
                     Button button = new Button
                     {
-                        Text = L.SubtitlesApplyToSelectedEvents,
+                        Text = I18n.Translation.SubtitlesApplyToSelectedEvents,
                         Margin = new Padding(3, 0, 3, 9),
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoSize = true,
@@ -966,7 +965,7 @@ namespace UltraPaste
 
                     button = new Button
                     {
-                        Text = L.SubtitlesTitlesAndTextToProTypeTitler.Replace("&", "&&"),
+                        Text = I18n.Translation.SubtitlesTitlesAndTextToProTypeTitler.Replace("&", "&&"),
                         Margin = new Padding(3, 0, 3, 9),
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoSize = true,
@@ -1010,12 +1009,12 @@ namespace UltraPaste
             public static UltraTableLayoutPanel From(UltraPasteSettings.MediaImportSettings set, ContainerControl formControl, bool addOneClickGroup = true)
             {
                 UltraTableLayoutPanel p = FromBaseImport(set, formControl);
-                p.Name = L.MediaImport;
+                p.Name = I18n.Translation.MediaImport;
 
                 Label label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.MediaImportAdd,
+                    Text = I18n.Translation.MediaImportAdd,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -1024,7 +1023,7 @@ namespace UltraPaste
                 {
                     AutoSize = true,
                     Margin = new Padding(9, 6, 11, 6),
-                    DataSource = L.MediaImportAddType.Clone(),
+                    DataSource = I18n.Translation.MediaImportAddType.Clone(),
                     DropDownStyle = ComboBoxStyle.DropDownList,
                     Dock = DockStyle.Fill
                 };
@@ -1033,7 +1032,7 @@ namespace UltraPaste
                 label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.MediaImportStream,
+                    Text = I18n.Translation.MediaImportStream,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -1042,7 +1041,7 @@ namespace UltraPaste
                 {
                     AutoSize = true,
                     Margin = new Padding(9, 6, 11, 6),
-                    DataSource = L.MediaImportStreamType.Clone(),
+                    DataSource = I18n.Translation.MediaImportStreamType.Clone(),
                     DropDownStyle = ComboBoxStyle.DropDownList,
                     Dock = DockStyle.Fill
                 };
@@ -1051,7 +1050,7 @@ namespace UltraPaste
                 label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.MediaImportEventLength,
+                    Text = I18n.Translation.MediaImportEventLength,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -1060,7 +1059,7 @@ namespace UltraPaste
                 {
                     AutoSize = true,
                     Margin = new Padding(9, 6, 11, 6),
-                    DataSource = L.MediaImportEventLengthType.Clone(),
+                    DataSource = I18n.Translation.MediaImportEventLengthType.Clone(),
                     DropDownStyle = ComboBoxStyle.DropDownList,
                     Dock = DockStyle.Fill
                 };
@@ -1068,7 +1067,7 @@ namespace UltraPaste
 
                 CheckBox check = new CheckBox
                 {
-                    Text = L.MediaImportImageSequence,
+                    Text = I18n.Translation.MediaImportImageSequence,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.ImageSequence ?? true
@@ -1129,7 +1128,7 @@ namespace UltraPaste
 
                     Button button = new Button
                     {
-                        Text = L.AddMissingStreams,
+                        Text = I18n.Translation.AddMissingStreams,
                         Margin = new Padding(3, 0, 3, 9),
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoSize = true,
@@ -1145,7 +1144,7 @@ namespace UltraPaste
                     {
                         button = new Button
                         {
-                            Text = L.MediaImportCustom,
+                            Text = I18n.Translation.MediaImportCustom,
                             Margin = new Padding(3, 0, 3, 9),
                             TextAlign = ContentAlignment.MiddleCenter,
                             AutoSize = true,
@@ -1164,8 +1163,8 @@ namespace UltraPaste
                                 AutoSize = true,
                                 BackColor = Common.UIColors[0],
                                 ForeColor = Common.UIColors[1],
-                                Font = new Font(L.Font, 9),
-                                Text = L.MediaImportCustom,
+                                Font = new Font(I18n.Translation.Font, 9),
+                                Text = I18n.Translation.MediaImportCustom,
                                 FormBorderStyle = FormBorderStyle.FixedToolWindow,
                                 StartPosition = FormStartPosition.CenterScreen,
                                 AutoSizeMode = AutoSizeMode.GrowAndShrink
@@ -1177,7 +1176,7 @@ namespace UltraPaste
                             label = new Label
                             {
                                 Margin = new Padding(6, 9, 0, 6),
-                                Text = L.MediaImportCustomIncludedFiles,
+                                Text = I18n.Translation.MediaImportCustomIncludedFiles,
                                 AutoSize = true
                             };
                             pc.Controls.Add(label);
@@ -1233,7 +1232,7 @@ namespace UltraPaste
                             label = new Label
                             {
                                 Margin = new Padding(6, 9, 0, 6),
-                                Text = L.StartPosition,
+                                Text = I18n.Translation.StartPosition,
                                 AutoSize = true
                             };
                             pc.Controls.Add(label);
@@ -1242,7 +1241,7 @@ namespace UltraPaste
                             {
                                 AutoSize = true,
                                 Margin = new Padding(9, 6, 11, 6),
-                                DataSource = L.StartPositionType.Clone(),
+                                DataSource = I18n.Translation.StartPositionType.Clone(),
                                 DropDownStyle = ComboBoxStyle.DropDownList,
                                 Dock = DockStyle.Fill
                             };
@@ -1250,7 +1249,7 @@ namespace UltraPaste
 
                             CheckBox cursorToEndCustom = new CheckBox
                             {
-                                Text = L.CursorToEnd,
+                                Text = I18n.Translation.CursorToEnd,
                                 Margin = new Padding(6, 8, 6, 6),
                                 AutoSize = true,
                                 Checked = set?.CursorToEnd ?? true
@@ -1261,7 +1260,7 @@ namespace UltraPaste
                             label = new Label
                             {
                                 Margin = new Padding(6, 9, 0, 6),
-                                Text = L.MediaImportAdd,
+                                Text = I18n.Translation.MediaImportAdd,
                                 AutoSize = true
                             };
                             pc.Controls.Add(label);
@@ -1270,7 +1269,7 @@ namespace UltraPaste
                             {
                                 AutoSize = true,
                                 Margin = new Padding(9, 6, 11, 6),
-                                DataSource = L.MediaImportAddType.Clone(),
+                                DataSource = I18n.Translation.MediaImportAddType.Clone(),
                                 DropDownStyle = ComboBoxStyle.DropDownList,
                                 Dock = DockStyle.Fill
                             };
@@ -1279,7 +1278,7 @@ namespace UltraPaste
                             label = new Label
                             {
                                 Margin = new Padding(6, 9, 0, 6),
-                                Text = L.MediaImportStream,
+                                Text = I18n.Translation.MediaImportStream,
                                 AutoSize = true
                             };
                             pc.Controls.Add(label);
@@ -1288,7 +1287,7 @@ namespace UltraPaste
                             {
                                 AutoSize = true,
                                 Margin = new Padding(9, 6, 11, 6),
-                                DataSource = L.MediaImportStreamType.Clone(),
+                                DataSource = I18n.Translation.MediaImportStreamType.Clone(),
                                 DropDownStyle = ComboBoxStyle.DropDownList,
                                 Dock = DockStyle.Fill
                             };
@@ -1297,7 +1296,7 @@ namespace UltraPaste
                             label = new Label
                             {
                                 Margin = new Padding(6, 9, 0, 6),
-                                Text = L.MediaImportEventLength,
+                                Text = I18n.Translation.MediaImportEventLength,
                                 AutoSize = true
                             };
                             pc.Controls.Add(label);
@@ -1306,7 +1305,7 @@ namespace UltraPaste
                             {
                                 AutoSize = true,
                                 Margin = new Padding(9, 6, 11, 6),
-                                DataSource = L.MediaImportEventLengthType.Clone(),
+                                DataSource = I18n.Translation.MediaImportEventLengthType.Clone(),
                                 DropDownStyle = ComboBoxStyle.DropDownList,
                                 Dock = DockStyle.Fill
                             };
@@ -1314,7 +1313,7 @@ namespace UltraPaste
 
                             CheckBox imageSequenceCustom = new CheckBox
                             {
-                                Text = L.MediaImportImageSequence,
+                                Text = I18n.Translation.MediaImportImageSequence,
                                 Margin = new Padding(6, 8, 6, 6),
                                 AutoSize = true,
                                 Checked = set?.ImageSequence ?? true
@@ -1378,8 +1377,7 @@ namespace UltraPaste
 
                             combo.SelectedValueChanged += (oo, ee) =>
                             {
-                                UltraPasteSettings.CustomMediaImportSettings cmis = combo.SelectedItem as UltraPasteSettings.CustomMediaImportSettings;
-                                if (cmis != null)
+                                if (combo.SelectedItem is UltraPasteSettings.CustomMediaImportSettings cmis)
                                 {
                                     startPositionCustom.SelectedIndex = cmis.StartPositionType;
                                     cursorToEndCustom.Checked = cmis.CursorToEnd;
@@ -1409,7 +1407,7 @@ namespace UltraPaste
                 Label label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.StartPosition,
+                    Text = I18n.Translation.StartPosition,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -1418,7 +1416,7 @@ namespace UltraPaste
                 {
                     AutoSize = true,
                     Margin = new Padding(9, 6, 11, 6),
-                    DataSource = L.StartPositionType.Clone(),
+                    DataSource = I18n.Translation.StartPositionType.Clone(),
                     DropDownStyle = ComboBoxStyle.DropDownList,
                     Dock = DockStyle.Fill
                 };
@@ -1426,7 +1424,7 @@ namespace UltraPaste
 
                 CheckBox check = new CheckBox
                 {
-                    Text = L.CursorToEnd,
+                    Text = I18n.Translation.CursorToEnd,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.CursorToEnd ?? true
@@ -1470,12 +1468,12 @@ namespace UltraPaste
 
             public static UltraTableLayoutPanel From(UltraPasteSettings.VegasDataSettings set, ContainerControl formControl, bool addOneClickGroup = true)
             {
-                UltraTableLayoutPanel p = new UltraTableLayoutPanel() { Name = L.VegasData };
+                UltraTableLayoutPanel p = new UltraTableLayoutPanel() { Name = I18n.Translation.VegasData };
 
                 Label label = new Label
                 {
                     Margin = new Padding(6, 9, 0, 6),
-                    Text = L.VegImport,
+                    Text = I18n.Translation.VegImport,
                     AutoSize = true
                 };
                 p.Controls.Add(label);
@@ -1485,7 +1483,7 @@ namespace UltraPaste
                 {
                     AutoSize = true,
                     Margin = new Padding(9, 6, 11, 6),
-                    DataSource = L.VegImportType.Clone(),
+                    DataSource = I18n.Translation.VegImportType.Clone(),
                     DropDownStyle = ComboBoxStyle.DropDownList,
                     Dock = DockStyle.Fill
                 };
@@ -1494,7 +1492,7 @@ namespace UltraPaste
 
                 CheckBox selectivelyPasteEventAttributes = new CheckBox
                 {
-                    Text = L.SelectivelyPasteEventAttributes,
+                    Text = I18n.Translation.SelectivelyPasteEventAttributes,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.SelectivelyPasteEventAttributes ?? true
@@ -1504,7 +1502,7 @@ namespace UltraPaste
 
                 CheckBox runScript = new CheckBox
                 {
-                    Text = L.RunScript,
+                    Text = I18n.Translation.RunScript,
                     Margin = new Padding(6, 8, 6, 6),
                     AutoSize = true,
                     Checked = set?.RunScript ?? true
@@ -1556,7 +1554,7 @@ namespace UltraPaste
 
                     Button button = new Button
                     {
-                        Text = L.GenerateMixedVegasClipboardData,
+                        Text = I18n.Translation.GenerateMixedVegasClipboardData,
                         Margin = new Padding(3, 0, 3, 9),
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoSize = true,

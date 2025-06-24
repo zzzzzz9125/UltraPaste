@@ -27,8 +27,11 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // 如果此项目向 COM 公开，则下列 GUID 用于类型库的 ID
+#if !Sony
 [assembly: Guid("b30fbc3d-97f5-dacd-1e31-2996c903eeee")]
-
+#else
+[assembly: Guid("b02e9db9-4759-798d-303f-0f4ee499bd15")]
+#endif
 // 程序集的版本信息由下列四个值组成: 
 //
 //      主版本

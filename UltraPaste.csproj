@@ -78,9 +78,6 @@
     <Compile Include="DibImageData.cs" />
     <Compile Include="DxtPresetModifier.cs" />
     <Compile Include="ImageSequenceValidator.cs" />
-    <Compile Include="TransparentMouseFollower.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Include="UltraControls.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -88,7 +85,7 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="VirtualKeyboard.cs" />
-    <Compile Include="L.cs" />
+    <Compile Include="I18n.cs" />
     <Compile Include="ReaperBlock.cs" />
     <Compile Include="ReaperData.cs" />
     <Compile Include="SubtitlesData.cs" />

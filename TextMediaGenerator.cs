@@ -247,6 +247,12 @@ namespace UltraPaste
                 return new List<VideoEvent>();
             }
             PlugInNode plug = TextPlugIns[type];
+
+            if (!plug.GetAvailablePresets().Contains(presetName))
+            {
+                presetName = null;
+            }
+
             if (plug.IsOFX)
             {
                 return GenerateOfxEvents(plug, start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex);
@@ -348,30 +354,6 @@ namespace UltraPaste
             return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
         }
 
-        public static List<VideoEvent> GenerateSolidColorEvents(Timecode start, Timecode length = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
-        {
-            if (PlugInSolidColor == null)
-            {
-                return new List<VideoEvent>();
-            }
-            Media media = Media.CreateInstance(UltraPasteCommon.Vegas.Project, PlugInSolidColor);
-
-            if (length.Nanos > 0)
-            {
-                media.Length = length;
-            }
-
-            OFXRGBAParameter c;
-            if ((c = media.Generator.OFXEffect["Color"] as OFXRGBAParameter) != null)
-            {
-                OFXColor color = c.Value;
-                color.A = 0;
-                c.Value = color;
-            }
-
-            return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
-        }
-
         public static List<VideoEvent> GenerateOfxEvents(PlugInNode plug, Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
         {
             if (plug == null)
@@ -399,8 +381,40 @@ namespace UltraPaste
             }
             else
             {
-                List<VideoEvent> vEvents = GenerateSolidColorEvents(start, length, useMultipleSelectedTracks, newTrackIndex);
+                Media media = null;
 
+                if (PlugInSolidColor != null)
+                {
+                    foreach (Media m in UltraPasteCommon.Vegas.Project.MediaPool)
+                    {
+                        if (m.Generator?.PlugIn.UniqueID == PlugInSolidColor.UniqueID && m.Length.Nanos == 1)
+                        {
+                            OFXRGBAParameter c;
+                            if ((c = media.Generator.OFXEffect["Color"] as OFXRGBAParameter) != null && c.Value.A == 0)
+                            {
+                                media = m;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (media == null)
+                    {
+                        media = Media.CreateInstance(UltraPasteCommon.Vegas.Project, PlugInSolidColor);
+                        media.Length = Timecode.FromNanos(1);
+                        OFXRGBAParameter c;
+                        if ((c = media.Generator.OFXEffect["Color"] as OFXRGBAParameter) != null)
+                        {
+                            OFXColor color = c.Value;
+                            color.A = 0;
+                            c.Value = color;
+                        }
+                    }
+                }
+
+                List<VideoEvent> vEvents = UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
+
+                int i = 1;
                 foreach (VideoEvent vEvent in vEvents)
                 {
                     Effect ef = new Effect(plug);
@@ -411,6 +425,12 @@ namespace UltraPaste
                         ef.Preset = presetName;
                     }
                     ef.SetTextStringParameters(text);
+                    string name = string.Format("{0} {1}", ef.PlugIn.Name, i++);
+                    vEvent.Name = name;
+                    foreach (Take t in vEvent.Takes)
+                    {
+                        t.Name = name;
+                    }
                 }
                 return vEvents;
             }

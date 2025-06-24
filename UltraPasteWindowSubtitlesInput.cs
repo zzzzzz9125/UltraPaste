@@ -11,7 +11,6 @@ using System.Windows.Forms;
 namespace UltraPaste
 {
     using UltraControls;
-    using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
     public sealed partial class UltraPasteWindowSubtitlesInput : DockableControl
     {
@@ -69,9 +68,9 @@ namespace UltraPaste
             MinimumSize = new Size(433, 172);
             BackColor = Common.UIColors[0];
             ForeColor = Common.UIColors[1];
-            DisplayName = string.Format("{0} - {1}", L.UltraPaste, L.SubtitlesInputBox);
+            DisplayName = string.Format("{0} - {1}", I18n.Translation.UltraPaste, I18n.Translation.SubtitlesInputBox);
 
-            Font = new Font(L.Font, 9);
+            Font = new Font(I18n.Translation.Font, 9);
 
             TableLayoutPanel l = UltraTableLayoutPanel.GetInputPanel(UltraPasteCommon.Settings.SubtitlesImport);
             Controls.Add(l);

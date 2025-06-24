@@ -20,7 +20,7 @@ namespace UltraPaste
     {
         public static string SettingsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Vegas Application Extensions", "UltraPaste");
         public static UltraPasteSettings Settings = UltraPasteSettings.LoadFromFile();
-        public const string VERSION = "v1.01 Beta";
+        public const string VERSION = "v1.01";
         public static Vegas Vegas { get { return myVegas; } set { myVegas = value; } }
         private static Vegas myVegas;
         public static KeyValuePair<string, byte[]> LastPathAndImageBytes = new KeyValuePair<string, byte[]>();
@@ -38,7 +38,7 @@ namespace UltraPaste
             string projectFileToOpen = null, scriptFileToRun = null;
             bool pasteAttributes = false;
 
-            using (UndoBlock undo = new UndoBlock(myVegas.Project, L.UltraPaste))
+            using (UndoBlock undo = new UndoBlock(myVegas.Project, I18n.Translation.UltraPaste))
             {
                 Timecode start = myVegas.Transport.SelectionStart, length = myVegas.Transport.SelectionLength;
                 if (length.Nanos < 0)
@@ -633,7 +633,7 @@ namespace UltraPaste
             {
                 return;
             }
-            using (UndoBlock undo = new UndoBlock(myVegas.Project, L.PsdAddOtherLayers))
+            using (UndoBlock undo = new UndoBlock(myVegas.Project, I18n.Translation.PsdAddOtherLayers))
             {
                 myVegas.Project.AddMissingStreams(vEvents, MediaType.Unknown, true, -1, false, 0);
             }
@@ -676,7 +676,7 @@ namespace UltraPaste
                 return;
             }
 
-            using (UndoBlock undo = new UndoBlock(myVegas.Project, L.SubtitlesApplyToSelectedEvents))
+            using (UndoBlock undo = new UndoBlock(myVegas.Project, I18n.Translation.SubtitlesApplyToSelectedEvents))
             {
                 foreach (Effect ef in efs)
                 {
@@ -696,7 +696,7 @@ namespace UltraPaste
 
             Dictionary<Media, Media> mediaPairs = new Dictionary<Media, Media>();
 
-            using (UndoBlock undo = new UndoBlock(myVegas.Project, L.SubtitlesTitlesAndTextToProTypeTitler))
+            using (UndoBlock undo = new UndoBlock(myVegas.Project, I18n.Translation.SubtitlesTitlesAndTextToProTypeTitler))
             {
                 foreach (VideoEvent vEvent in vEvents)
                 {
@@ -726,7 +726,7 @@ namespace UltraPaste
             {
                 return;
             }
-            using (UndoBlock undo = new UndoBlock(myVegas.Project, L.AddMissingStreams))
+            using (UndoBlock undo = new UndoBlock(myVegas.Project, I18n.Translation.AddMissingStreams))
             {
                 myVegas.Project.AddMissingStreams(vEvents);
             }

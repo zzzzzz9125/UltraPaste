@@ -5,8 +5,10 @@ using Sony.Vegas;
 #endif
 
 using System;
+using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Collections.Generic;
 
 namespace UltraPaste
 {
@@ -60,6 +62,23 @@ namespace UltraPaste
             base.Dispose(disposing);
         }
 
+        private static readonly List<char> InvalidChars = new List<char>(Path.GetInvalidFileNameChars());
+        public static string SanitizeFileName(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            char[] chars = input.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                if (InvalidChars.Contains(chars[i]))
+                {
+                    chars[i] = '_';
+                }
+            }
+            return new string(chars);
+        }
+
         private void InitializeComponent()
         {
             SuspendLayout();
@@ -67,8 +86,8 @@ namespace UltraPaste
             MinimumSize = new Size(433, 172);
             BackColor = Common.UIColors[0];
             ForeColor = Common.UIColors[1];
-            DisplayName = string.Format("{0} {1}", L.UltraPaste, UltraPasteCommon.VERSION);
-            Font = new Font(L.Font, 9);
+            DisplayName = string.Format("{0} {1}", I18n.Translation.UltraPaste, UltraPasteCommon.VERSION);
+            Font = new Font(I18n.Translation.Font, 9);
 
             TableLayoutPanel l = new TableLayoutPanel
             {
@@ -85,7 +104,7 @@ namespace UltraPaste
             UltraTabControl tab = new UltraTabControl();
             l.Controls.Add(tab);
             l.SetColumnSpan(tab, 2);
-
+            
             tab.TabPages.Add(UltraTabPage.From(UltraTableLayoutPanel.From(UltraPasteCommon.Settings.General, this)));
             tab.TabPages.Add(UltraTabPage.From(UltraTableLayoutPanel.From(UltraPasteCommon.Settings.ClipboardImage, this)));
             tab.TabPages.Add(UltraTabPage.From(UltraTableLayoutPanel.From(UltraPasteCommon.Settings.ReaperData, this)));

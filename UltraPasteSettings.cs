@@ -10,7 +10,6 @@ using System.Windows.Forms;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-
 namespace UltraPaste
 {
     public class UltraPasteSettings
@@ -37,7 +36,6 @@ namespace UltraPaste
 
         public class GeneralSettings
         {
-            public string CurrentLanguage = System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
             public string ExcludedFiles = "*.exe;*.sfvp0;*.sfap0";
             public int LastTabIndex = 0;
         }
@@ -115,14 +113,19 @@ namespace UltraPaste
 
         public class ClipboardImageSettings : BaseImportSettings
         {
-            public string FilePath = @"%PROJECTFOLDER%\Clipboard\<yyyyMMdd_HHmmss>.png";
+            public string FilePath = @".\Clipboard\<yyyyMMdd_HHmmss>.png";
 
             public string GetTrueFilePath()
             {
-                string filePath = Environment.ExpandEnvironmentVariables(Regex.Replace(FilePath, @"%PROJECTFOLDER%", Path.GetDirectoryName(UltraPasteCommon.Vegas.Project.FilePath)?.Trim('\\', '/') ?? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), RegexOptions.IgnoreCase));
+                string projectDir = Path.GetDirectoryName(UltraPasteCommon.Vegas.Project.FilePath)?.Trim('\\', '/') ?? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                string filePath = Environment.ExpandEnvironmentVariables(Regex.Replace(FilePath, @"%PROJECTFOLDER%", projectDir, RegexOptions.IgnoreCase))?.Trim('\\', '/');
                 foreach (Match m in Regex.Matches(filePath, @"<.*?>"))
                 {
                     filePath = filePath?.Replace(m.Value, DateTime.Now.ToString(m.Value)?.Trim('<', '>'));
+                }
+                if (!Path.IsPathRooted(filePath))
+                {
+                    filePath = Path.Combine(projectDir, filePath);
                 }
                 try
                 {
@@ -136,7 +139,7 @@ namespace UltraPaste
                 }
                 catch
                 {
-                    filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Clipboard", string.Format("{0}.png", DateTime.Now.ToString("yyyyMMdd_HHmmss")));
+                    filePath = Path.Combine(projectDir, "Clipboard", string.Format("{0}.png", DateTime.Now.ToString("yyyyMMdd_HHmmss")));
                 }
                 return filePath;
             }
