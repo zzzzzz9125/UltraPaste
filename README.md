@@ -54,7 +54,7 @@ Bind a keyboard shortcut (**Recommended:** `Ctrl+Shift+V`) under **Options → C
 - **Move Cursor to End:** Auto-shift cursor to the end of new Events.  
 - **File Path:**  
   - Default: `Clipboard\<yyyyMMdd_HHmmss>.png` (= `%PROJECTFOLDER%\Clipboard\<yyyyMMdd_HHmmss>.png`)
-  - You should separate the timecode with "<>". Timecode formatting rules: [Microsoft Docs](https://learn.microsoft.com/zh-cn/dotnet/api/system.datetime.tostring).  
+  - You should separate the timecode with "<>". Timecode formatting rules: [Microsoft Docs](https://learn.microsoft.com/dotnet/api/system.datetime.tostring).  
 
 #### REAPER Data
 ![image](https://github.com/user-attachments/assets/aba0e536-c9ec-465a-bd00-35dbf1cef250)
