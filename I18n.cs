@@ -257,8 +257,13 @@ namespace UltraPaste
 
         public static void SaveSettingsToXml()
         {
-            string xmlStr = Settings.SerializeXml();
-            File.WriteAllText(FilePath, xmlStr);
+            string dirPath = Path.GetDirectoryName(FilePath);
+            if (!Directory.Exists(dirPath))
+            {
+                Directory.CreateDirectory(dirPath);
+            }
+
+            File.WriteAllText(FilePath, Settings.SerializeXml(), System.Text.Encoding.UTF8);
         }
     }
 }
