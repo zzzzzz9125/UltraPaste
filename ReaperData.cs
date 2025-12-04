@@ -10,6 +10,7 @@ using System.Text;
 using System.Linq;
 using System.Globalization;
 using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace UltraPaste
 {
@@ -408,14 +409,15 @@ namespace UltraPaste
 
                         if (item.VolPan?.Length > 0)
                         {
-                            ev.FadeIn.Gain = (float)item.VolPan[0];
+                            ev.FadeIn.Gain = item.VolPan[0] < 1 ? (float)item.VolPan[0] : 1;
                         }
                         if (item.VolPan?.Length > 2)
                         {
-                            ev.Normalize = item.VolPan[2] != 1;
+                            double normalize = item.VolPan[0] * (item.VolPan[1] > 1 ? item.VolPan[1] : 1);
+                            ev.Normalize = normalize != 1;
                             if (ev.Normalize)
                             {
-                                ev.NormalizeGain = Math.Abs(item.VolPan[2]);
+                                ev.NormalizeGain = Math.Abs(normalize);
                             }
                             ev.InvertPhase = item.VolPan[2] < 0;
                         }
@@ -1389,7 +1391,7 @@ namespace UltraPaste
                 for (int i = 1; i < tokens.Length; i++)
                 {
                     str += ' ' + tokens[i];
-                    if (tokens[i][tokens[i].Length - 1] == '\"')
+                    if (!string.IsNullOrEmpty(tokens[i]) && tokens[i][tokens[i].Length - 1] == '\"')
                     {
                         break;
                     }
