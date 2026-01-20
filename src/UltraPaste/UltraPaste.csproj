@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{135EC03A-CE86-4A5C-A305-85E76BAB0E3C}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>UltraPaste</RootNamespace>
+    <AssemblyName>UltraPaste</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE;MAGIX</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>
+    </ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="CorePrimitives">
+      <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\CorePrimitives.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="ScriptPortal.MediaSoftware.Skins, Version=22.0.0.239, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\ScriptPortal.MediaSoftware.Skins.dll</HintPath>
+    </Reference>
+    <Reference Include="ScriptPortal.MediaSoftware.TextGen.CoreGraphics">
+      <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\ScriptPortal.MediaSoftware.TextGen.CoreGraphics.dll</HintPath>
+    </Reference>
+    <Reference Include="ScriptPortal.Vegas, Version=22.0.0.239, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\ScriptPortal.Vegas.dll</HintPath>
+    </Reference>
+    <Reference Include="Sony.MediaSoftware.Skins, Version=13.0.0.453, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>C:\Program Files\Sony\Vegas Pro 13.0\Sony.MediaSoftware.Skins.dll</HintPath>
+    </Reference>
+    <Reference Include="Sony.MediaSoftware.TextGen.CoreGraphics">
+      <HintPath>C:\Program Files\Sony\Vegas Pro 13.0\Sony.MediaSoftware.TextGen.CoreGraphics.dll</HintPath>
+    </Reference>
+    <Reference Include="Sony.Vegas">
+      <HintPath>C:\Program Files\Sony\Vegas Pro 13.0\Sony.Vegas.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ExtensionMethods\VegasCommonExtensions.cs" />
+    <Compile Include="UltraControls\UltraOneClickGroupBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTabControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTableLayoutPanel_ClipboardImage.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTableLayoutPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTableLayoutPanel_General.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTableLayoutPanel_MediaImport.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTableLayoutPanel_PsdImport.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTableLayoutPanel_CapCutData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTableLayoutPanel_ReaperData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTableLayoutPanel_SubtitlesImport.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTableLayoutPanel_SubtitlesInput.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTableLayoutPanel_VegasData.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UltraControls\UltraTabPage.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Utilities\VegasCommonHelper.cs" />
+    <Compile Include="Utilities\DibImageDataHelper.cs" />
+    <Compile Include="ExtensionMethods\PlugInExtensions.cs" />
+    <Compile Include="Utilities\ImageSequenceHelper.cs" />
+    <Compile Include="ExtensionMethods\ReaperDataExtensions.cs" />
+    <Compile Include="UltraControls\UltraWindow_SubtitlesInput.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Utilities\ReaperDataHelper.cs" />
+    <Compile Include="VirtualKeyboard.cs" />
+    <Compile Include="I18n.cs" />
+    <Compile Include="SubtitlesData.cs" />
+    <Compile Include="Utilities\TextMediaGeneratorHelper.cs" />
+    <Compile Include="ExtensionMethods\TrackEventExtensions.cs" />
+    <Compile Include="UltraControls\UltraWindow_Main.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="UltraPasteCommand.cs" />
+    <Compile Include="UltraPasteCommon.cs" />
+    <Compile Include="UltraPasteCommandModule.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UltraPasteSettings.cs" />
+    <Compile Include="ExtensionMethods\CapCutDataExtensions.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CapCutDataParser\CapCutDataParser.csproj">
+      <Project>{70494d50-773f-46a6-a275-b782bcc0c79c}</Project>
+      <Name>CapCutDataParser</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ReaperDataParser\ReaperDataParser.csproj">
+      <Project>{c993b43c-2c1f-46a4-96e0-4f4fd89b1bca}</Project>
+      <Name>ReaperDataParser</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
+</Project>

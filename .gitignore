@@ -1,0 +1,60 @@
+# Visual Studio artifacts
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+[Bb]uild/
+[Tt]est[Rr]esult*/
+[Rr]elease*/
+[Dd]ebug*/
+[Ll]aunchSettings.json
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Cache / temp files
+ipch/
+*.opendb
+*.VC.db
+*.ilk
+*.obj
+*.pch
+*.pdb
+*.cache
+*.tlog
+*.lastcodeanalysissucceeded
+*.lastbuildstate
+*.TMP
+*.tmp
+~$*
+
+# Resharper / Rider
+_ReSharper*/
+*.DotSettings.user
+.idea/
+
+# Coverage / analysis
+*.coverage
+*.coveragexml
+*.svclog
+
+# VS Code
+.vscode/
+
+# OS-generated
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
