@@ -10,7 +10,6 @@ using System.Collections.Generic;
 namespace UltraPaste
 {
     using ExtensionMethods;
-    using System.IO;
 
     internal class UltraPasteCommand
     {

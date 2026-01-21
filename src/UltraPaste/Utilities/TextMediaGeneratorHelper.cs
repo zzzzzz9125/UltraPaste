@@ -234,6 +234,7 @@ namespace UltraPaste
 
         public static List<VideoEvent> GenerateTextEvents(Timecode start, Timecode length = null, string text = null, int type = 0, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
         {
+            List<VideoEvent> evs = new List<VideoEvent>();
             if (type > TextPlugIns.Length - 1)
             {
                 return new List<VideoEvent>();
@@ -247,14 +248,36 @@ namespace UltraPaste
 
             if (plug.IsOFX)
             {
-                return GenerateOfxEvents(plug, start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex);
+                evs = GenerateOfxEvents(plug, start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex);
             }
-            else
+            else if (plug.UniqueID == PlugInProTypeTitler.UniqueID)
             {
-                return plug.UniqueID == PlugInProTypeTitler.UniqueID ? GenerateProTypeTitlerEvents(start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex)
-                     : plug.UniqueID == PlugInLegacyText.UniqueID    ? GenerateLegacyTextEvents   (start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex) : new List<VideoEvent>();
+                evs = GenerateProTypeTitlerEvents(start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex);
+            }
+            else if (plug.UniqueID == PlugInLegacyText.UniqueID)
+            {
+                evs = GenerateLegacyTextEvents(start, length, text, presetName, useMultipleSelectedTracks, newTrackIndex);
             }
 
+            if (evs == null || evs.Count == 0)
+            {
+                return evs ?? new List<VideoEvent>();
+            }
+
+            if (evs.Count == 1 && evs[0].ActiveTake != null)
+            {
+                evs[0].ActiveTake.Name = text;
+                return evs;
+            }
+
+            for (int i = 0; i < evs.Count; i++)
+            {
+                if (evs[i]?.ActiveTake != null)
+                {
+                    evs[i].ActiveTake.Name = string.Format("{0} {1}", text, i+1);
+                }
+            }
+            return evs;
         }
 
         private static List<VideoEvent> GenerateProTypeTitlerEvents(Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1, TitlerChanger changer = null)

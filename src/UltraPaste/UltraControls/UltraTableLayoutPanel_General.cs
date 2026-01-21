@@ -100,12 +100,12 @@ namespace UltraPaste.UltraControls
 
                     if (MessageBox.Show(I18n.Translation.LanguageChange, I18n.Translation.UltraPaste, MessageBoxButtons.OKCancel) == DialogResult.OK)
                     {
-                        if (UltraPasteCommon.Vegas.FindDockView("UltraPaste_Window", out IDockView dock) && dock is DockableControl dockableControl)
+                        if (UltraPasteCommon.Vegas.FindDockView("UltraWindow_Main", out IDockView dock) && dock is DockableControl dockableControl)
                         {
                             dockableControl.Close();
                         }
 
-                        if (UltraPasteCommon.Vegas.FindDockView("UltraPaste_Window_SubtitlesInput", out dock) && dock is DockableControl subtitlesControl)
+                        if (UltraPasteCommon.Vegas.FindDockView("UltraWindow_SubtitlesInput", out dock) && dock is DockableControl subtitlesControl)
                         {
                             subtitlesControl.Close();
                         }

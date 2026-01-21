@@ -34,7 +34,8 @@ namespace CapCutDataParser
                 {
                     MaterialId = key,
                     Name = GetString(video, "material_name"),
-                    Path = GetString(video, "path")
+                    Path = GetString(video, "path"),
+                    HasSoundSeparated = GetBool(video, "has_sound_separated", true)
                 };
             }
 
@@ -115,6 +116,7 @@ namespace CapCutDataParser
             public string MaterialId { get; set; }
             public string Name { get; set; }
             public string Path { get; set; }
+            public bool HasSoundSeparated { get; set; } = true;
         }
 
         internal sealed class AudioMaterialInfo

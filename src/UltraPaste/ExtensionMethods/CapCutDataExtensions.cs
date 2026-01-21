@@ -5,31 +5,42 @@ using Sony.Vegas;
 #endif
 
 using System;
-using System.Collections.Generic;
+using System.Linq;
 using CapCutDataParser;
+using System.Collections.Generic;
 using System.Windows.Forms;
-using ReaperDataParser;
+
 
 namespace UltraPaste.ExtensionMethods
 {
     internal static class CapCutDataExtensions
     {
-        public static List<TrackEvent> GenerateEventsToVegas(this CapCutData data, Timecode start, bool closeGap, bool subtitlesOnly, out SubtitlesData subtitles)
+        public static List<TrackEvent> GenerateEventsToVegas(this CapCutData data, ref Timecode start, bool closeGap, bool subtitlesOnly, out SubtitlesData subtitles)
         {
             subtitles = null;
-            List<TrackEvent> events = new List<TrackEvent>();
+            List<TrackEvent> evs = new List<TrackEvent>();
 
             if (data == null)
             {
-                return events;
+                return evs;
             }
 
+            if (start == null || start < new Timecode(0))
+            {
+                start = new Timecode(0);
+            }
+
+            Timecode offset = null;
+
+            List<CapCutMediaUsage> usageList = null;
             if (data.MediaUsages != null && !subtitlesOnly)
             {
+                usageList = data.MediaUsages.Where(u => u != null && !string.IsNullOrWhiteSpace(u.Path)).ToList();
+                usageList.Sort(CompareByTrackAndStart);
+
                 if (closeGap)
                 {
-                    Timecode offset = null;
-                    foreach (CapCutMediaUsage usage in data.MediaUsages)
+                    foreach (CapCutMediaUsage usage in usageList)
                     {
                         Timecode tmp = ToTimecode(usage.Start);
                         if (offset == null || tmp < offset)
@@ -37,50 +48,67 @@ namespace UltraPaste.ExtensionMethods
                             offset = tmp;
                         }
                     }
-                    if (offset != null)
-                    {
-                        start -= offset;
-                    }
                 }
+            }
 
-                foreach (CapCutMediaUsage usage in data.MediaUsages)
+            List<CapCutSubtitleBlock> blocks = null;
+
+            if (data.Subtitles != null && data.Subtitles.Count > 0)
+            {
+                SubtitlesData subtitlesData = new SubtitlesData { IsFromStrings = false };
+                blocks = new List<CapCutSubtitleBlock>(data.Subtitles);
+                blocks.Sort(CompareByStart);
+
+                if (closeGap)
                 {
-                    if (usage == null || string.IsNullOrWhiteSpace(usage.Path))
+                    foreach (CapCutSubtitleBlock block in blocks)
                     {
-                        continue;
-                    }
-
-                    TimeSpan duration = usage.End - usage.Start;
-                    if (duration <= TimeSpan.Zero)
-                    {
-                        continue;
-                    }
-
-                    Timecode usageStart = start + ToTimecode(usage.Start);
-                    Timecode usageLength = ToTimecode(duration);
-
-                    if (usage.MediaType == CapCutMediaType.Audio)
-                    {
-                        foreach (AudioEvent ev in UltraPasteCommon.Vegas.GenerateEvents<AudioEvent>(usage.Path, usageStart, usageLength))
+                        Timecode tmp = ToTimecode(block.Start);
+                        if (offset == null || tmp < offset)
                         {
-                            events.Add(ev);
-                        }
-                    }
-                    else
-                    {
-                        foreach (VideoEvent ev in UltraPasteCommon.Vegas.GenerateEvents<VideoEvent>(usage.Path, usageStart, usageLength))
-                        {
-                            events.Add(ev);
+                            offset = tmp;
                         }
                     }
                 }
             }
 
-            if (data.Subtitles != null && data.Subtitles.Count > 0)
+            if (offset != null)
             {
+                start -= offset;
+            }
+
+            if (usageList?.Count > 0)
+            {
+                Dictionary<string, Track> trackCache = new Dictionary<string, Track>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, Media> mediaCache = new Dictionary<string, Media>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (CapCutMediaUsage usage in usageList)
+                {
+                    TrackEvent ev = CreateEventFromUsage(UltraPasteCommon.Vegas, usage, start, trackCache, mediaCache);
+                    if (ev != null)
+                    {
+                        evs.Add(ev);
+
+                        if (usage.MediaType == CapCutMediaType.Video && !usage.HasSoundSeparated)
+                        {
+                            List<TrackEvent> addedAudio = UltraPasteCommon.Vegas.Project.AddMissingStreams(new[] { ev }, MediaType.Audio);
+                            if (addedAudio != null && addedAudio.Count > 0)
+                            {
+                                evs.AddRange(addedAudio);
+                            }
+                        }
+                    }
+                    }
+            }
+
+            if (blocks != null)
+            {
+                foreach(TrackEvent ev in evs)
+                {
+                    ev.Track.Selected = false;
+                }
+
                 SubtitlesData subtitlesData = new SubtitlesData { IsFromStrings = false };
-                List<CapCutSubtitleBlock> blocks = new List<CapCutSubtitleBlock>(data.Subtitles);
-                blocks.Sort(CompareByStart);
 
                 foreach (CapCutSubtitleBlock block in blocks)
                 {
@@ -115,12 +143,209 @@ namespace UltraPaste.ExtensionMethods
                 }
             }
 
-            return events;
+            return evs;
+        }
+
+        private static TrackEvent CreateEventFromUsage(Vegas vegas, CapCutMediaUsage usage, Timecode timelineOffset, Dictionary<string, Track> trackCache, Dictionary<string, Media> mediaCache)
+        {
+            if (vegas?.Project == null || usage == null)
+            {
+                return null;
+            }
+
+            TimeSpan usageDuration = usage.End - usage.Start;
+            if (usageDuration <= TimeSpan.Zero)
+            {
+                return null;
+            }
+
+            Media media = ResolveMedia(vegas, usage.Path, mediaCache);
+            if (media == null)
+            {
+                return null;
+            }
+
+            Track track = EnsureTrackForUsage(vegas.Project, usage, trackCache);
+            if (track == null)
+            {
+                return null;
+            }
+
+            Timecode eventStart = timelineOffset + ToTimecode(usage.Start);
+            Timecode eventLength = ToTimecode(usageDuration);
+            TrackEvent ev = CreateTrackEvent(vegas.Project, track, usage, media, eventStart, eventLength);
+            if (ev == null)
+            {
+                return null;
+            }
+
+            ApplyUsageMetadata(ev, usage, usageDuration);
+            return ev;
+        }
+
+        private static Media ResolveMedia(Vegas vegas, string path, Dictionary<string, Media> cache)
+        {
+            if (vegas == null || string.IsNullOrWhiteSpace(path))
+            {
+                return null;
+            }
+
+            if (cache.TryGetValue(path, out Media media))
+            {
+                return media;
+            }
+
+            media = vegas.GetValidMedia(path);
+            cache[path] = media;
+            return media;
+        }
+
+        private static Track EnsureTrackForUsage(Project project, CapCutMediaUsage usage, Dictionary<string, Track> cache)
+        {
+            if (project == null || usage == null)
+            {
+                return null;
+            }
+
+            string key = !string.IsNullOrWhiteSpace(usage.TrackId)
+                ? usage.TrackId
+                : string.Format("{0}_{1}_{2}", usage.TrackType ?? usage.MediaType.ToString(), usage.TrackOrder, usage.MediaType);
+
+            if (cache.TryGetValue(key, out Track existing))
+            {
+                return existing;
+            }
+
+            string defaultName = !string.IsNullOrWhiteSpace(usage.TrackName)
+                ? usage.TrackName
+                : string.Empty;
+
+            Track newTrack = usage.MediaType == CapCutMediaType.Audio
+                ? (Track)new AudioTrack(project, -1, defaultName)
+                : new VideoTrack(project, -1, defaultName);
+
+            project.Tracks.Add(newTrack);
+
+            if (string.IsNullOrWhiteSpace(newTrack.Name))
+            {
+                newTrack.Name = defaultName;
+            }
+            cache[key] = newTrack;
+            return newTrack;
+        }
+
+        private static TrackEvent CreateTrackEvent(Project project, Track track, CapCutMediaUsage usage, Media media, Timecode start, Timecode length)
+        {
+            TrackEvent ev = usage.MediaType == CapCutMediaType.Audio
+                ? (TrackEvent)new AudioEvent(project, start, length, null)
+                : new VideoEvent(project, start, length, null);
+
+            track.Events.Add(ev);
+            if (ev.AddTake(media, true, usage.Name) == null)
+            {
+                track.Events.Remove(ev);
+                return null;
+            }
+
+            return ev;
+        }
+
+        private static void ApplyUsageMetadata(TrackEvent ev, CapCutMediaUsage usage, TimeSpan usageDuration)
+        {
+            if (ev == null || usage == null)
+            {
+                return;
+            }
+
+            if (ev.ActiveTake != null && usage.SourceStart.HasValue)
+            {
+                ev.ActiveTake.Offset = ToTimecode(usage.SourceStart.Value);
+            }
+
+            if (Math.Abs(usage.PlaybackRate - 1d) > 0.0001d)
+            {
+                ev.AdjustPlaybackRate(usage.PlaybackRate, true);
+            }
+
+            ApplyFadeLength(ev.FadeIn, usage.FadeIn, usageDuration);
+            ApplyFadeLength(ev.FadeOut, usage.FadeOut, usageDuration);
+
+            if (usage.MediaType == CapCutMediaType.Audio && ev is AudioEvent audioEvent)
+            {
+                ApplyAudioVolume(audioEvent, usage.Volume);
+            }
+        }
+
+        private static void ApplyFadeLength(Fade fade, TimeSpan? value, TimeSpan usageDuration)
+        {
+            if (fade == null || !value.HasValue || value.Value <= TimeSpan.Zero || usageDuration <= TimeSpan.Zero)
+            {
+                return;
+            }
+
+            TimeSpan length = value.Value;
+            if (length >= usageDuration)
+            {
+                length = usageDuration - TimeSpan.FromMilliseconds(1);
+                if (length <= TimeSpan.Zero)
+                {
+                    return;
+                }
+            }
+
+            fade.Length = ToTimecode(length);
+        }
+
+        private static void ApplyAudioVolume(AudioEvent audioEvent, double volume)
+        {
+            if (audioEvent == null)
+            {
+                return;
+            }
+
+            if (volume > 0 && volume < 1)
+            {
+                audioEvent.FadeIn.Gain = (float)volume;
+            }
         }
 
         private static Timecode ToTimecode(TimeSpan span)
         {
             return Timecode.FromMilliseconds(span.TotalMilliseconds);
+        }
+
+        private static int CompareByTrackAndStart(CapCutMediaUsage left, CapCutMediaUsage right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return 0;
+            }
+
+            if (left == null)
+            {
+                return 1;
+            }
+
+            if (right == null)
+            {
+                return -1;
+            }
+
+            int leftOrder = left.TrackOrder < 0 ? int.MaxValue : left.TrackOrder;
+            int rightOrder = right.TrackOrder < 0 ? int.MaxValue : right.TrackOrder;
+            int compare = leftOrder.CompareTo(rightOrder);
+            if (compare != 0)
+            {
+                return compare;
+            }
+
+            compare = left.Start.CompareTo(right.Start);
+            if (compare != 0)
+            {
+                return compare;
+            }
+
+            return string.Compare(left.MaterialId, right.MaterialId, StringComparison.OrdinalIgnoreCase);
         }
 
         private static int CompareByStart(CapCutSubtitleBlock left, CapCutSubtitleBlock right)

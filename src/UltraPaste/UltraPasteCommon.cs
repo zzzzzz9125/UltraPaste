@@ -60,7 +60,7 @@ namespace UltraPaste
                     SubtitlesData data = new SubtitlesData();
                     data.Subtitles.Add(InputBoxSubtitlesData.Subtitles[0]);
                     data.Subtitles[0].Length = TimeSpan.FromMilliseconds(length.ToMilliseconds());
-                    evs.AddRange(DoPaste_Subtitles(data, ref start, Settings.SubtitlesImport, true));
+                    evs.AddRange(DoPaste_Subtitles(data, ref start, Settings.SubtitlesImport, 1));
                     string str = string.Empty;
                     for (int i = 1; i < InputBoxSubtitlesData.Subtitles.Count; i++)
                     {
@@ -395,10 +395,37 @@ namespace UltraPaste
                 set = Settings.CapCutData;
             }
             set.ChangeImportStart(myVegas, ref start);
-            List<TrackEvent> addedEvents = data.GenerateEventsToVegas(start, set.CloseGap, set.SubtitlesOnly, out SubtitlesData subtitles);
+            List<TrackEvent> addedEvents = data.GenerateEventsToVegas(ref start, set.CloseGap, set.SubtitlesOnly, out SubtitlesData subtitles);
             if (subtitles != null)
             {
-                addedEvents.AddRange(DoPaste_Subtitles(subtitles, ref start, Settings.SubtitlesImport));
+                List<TrackEvent> subtitleEvents = DoPaste_Subtitles(subtitles, ref start, Settings.SubtitlesImport, 2);
+                foreach (TrackEvent subEv in subtitleEvents)
+                {
+                    foreach (TrackEvent ev in addedEvents)
+                    {
+                        if (subEv.Start < ev.Start || subEv.Start >= ev.End)
+                        {
+                            continue;
+                        }
+
+                        // If possible, it would be best to use Sync Links (`Right Click Events` -> `Create Sync Link with Selected Events`) to achieve this.
+                        // However, VEGAS Pro Scripting API does NOT provide methods for handling Sync Links.
+                        // Currently, we're using Event Groups instead.
+                        TrackEventGroup g = ev.Group;
+                        if (g == null)
+                        {
+                            g = new TrackEventGroup(myVegas.Project);
+                            myVegas.Project.Groups.Add(g);
+                            g.Add(ev);
+                        }
+                        if (!g.Contains(subEv))
+                        {
+                            g.Add(subEv);
+                        }
+                        break;
+                    }
+                }
+                addedEvents.AddRange(subtitleEvents);
             }
             if (set.CursorToEnd)
             {
@@ -417,7 +444,7 @@ namespace UltraPaste
             return DoPaste_Subtitles(SubtitlesData.Parser.ParseFromStrings(str, length), ref start, set);
         }
 
-        private static List<TrackEvent> DoPaste_Subtitles(SubtitlesData subtitles, ref Timecode start, UltraPasteSettings.SubtitlesImportSettings set = null, bool isInputBox = false)
+        private static List<TrackEvent> DoPaste_Subtitles(SubtitlesData subtitles, ref Timecode start, UltraPasteSettings.SubtitlesImportSettings set = null, int type = 0)
         {
             List<TrackEvent> addedEvents = new List<TrackEvent>();
             List<Region> regions = null;
@@ -425,8 +452,11 @@ namespace UltraPaste
             {
                 set = Settings.SubtitlesImport;
             }
-            set.ChangeImportStart(myVegas, ref start);
-            if (isInputBox)
+            if (type != 2)
+            {
+                set.ChangeImportStart(myVegas, ref start);
+            }
+            if (type == 1)
             {
                 subtitles.SplitCharactersAndLines(set.InputBoxMaxCharacters, set.InputBoxIgnoreWord, set.InputBoxMaxLines, set.InputBoxMultipleTracks);
             }
@@ -434,15 +464,16 @@ namespace UltraPaste
             {
                 subtitles.SplitCharactersAndLines(set.MaxCharacters, set.IgnoreWord, set.MaxLines, set.MultipleTracks);
             }
+            bool closeGap = type != 2 && set.CloseGap;
             if (set.AddTextMediaGenerators)
             {
-                addedEvents.AddRange(subtitles.GenerateEventsToVegas(start, set.MediaGeneratorType, set.PresetNames[set.MediaGeneratorType], set.CloseGap));
+                addedEvents.AddRange(subtitles.GenerateEventsToVegas(start, set.MediaGeneratorType, set.PresetNames[set.MediaGeneratorType], closeGap));
             }
             if (set.AddRegions)
             {
-                regions = subtitles.GenerateRegionsToVegas(start, set.CloseGap);
+                regions = subtitles.GenerateRegionsToVegas(start, closeGap);
             }
-            if (set.CursorToEnd)
+            if (type != 2 && set.CursorToEnd)
             {
                 myVegas.RefreshCursorPosition(!set.AddTextMediaGenerators && set.AddRegions ? regions.GetEndTimeFromMarkers() : addedEvents.GetEndTimeFromEvents());
             }

@@ -87,17 +87,25 @@ namespace CapCutDataParser
                 throw new InvalidDataException("CapCut draft content is invalid.");
             }
 
-            var materialIndex = MaterialIndex.Create(GetObject(root, "materials"));
+            var materials = GetObject(root, "materials");
+            var materialIndex = MaterialIndex.Create(materials);
+            var fadeIndex = BuildAudioFadeIndex(materials);
             var mediaUsages = new List<CapCutMediaUsage>();
             var subtitles = new List<CapCutSubtitleBlock>();
 
+            int trackOrder = 0;
             foreach (var track in EnumerateObjects(GetList(root, "tracks")))
             {
                 var trackType = GetString(track, "type");
                 if (string.IsNullOrWhiteSpace(trackType))
                 {
+                    trackOrder++;
                     continue;
                 }
+
+                string trackId = GetString(track, "id");
+                string trackName = GetString(track, "name");
+                int currentTrackOrder = trackOrder++;
 
                 foreach (var segment in EnumerateObjects(GetList(track, "segments")))
                 {
@@ -123,30 +131,40 @@ namespace CapCutDataParser
                         case "video":
                             if (materialIndex.TryGetVideo(materialId, out var video))
                             {
-                                mediaUsages.Add(new CapCutMediaUsage
-                                {
-                                    MediaType = CapCutMediaType.Video,
-                                    MaterialId = video.MaterialId,
-                                    Name = video.Name,
-                                    Path = video.Path,
-                                    Start = startTime,
-                                    End = endTime
-                                });
+                                mediaUsages.Add(CreateMediaUsage(
+                                    CapCutMediaType.Video,
+                                    video.MaterialId,
+                                    video.Name,
+                                    video.Path,
+                                    segment,
+                                    startTime,
+                                    endTime,
+                                    trackId,
+                                    trackName,
+                                    trackType,
+                                    currentTrackOrder,
+                                    video.HasSoundSeparated,
+                                    fadeIndex));
                             }
                             break;
 
                         case "audio":
                             if (materialIndex.TryGetAudio(materialId, out var audio))
                             {
-                                mediaUsages.Add(new CapCutMediaUsage
-                                {
-                                    MediaType = CapCutMediaType.Audio,
-                                    MaterialId = audio.MaterialId,
-                                    Name = audio.Name,
-                                    Path = audio.Path,
-                                    Start = startTime,
-                                    End = endTime
-                                });
+                                mediaUsages.Add(CreateMediaUsage(
+                                    CapCutMediaType.Audio,
+                                    audio.MaterialId,
+                                    audio.Name,
+                                    audio.Path,
+                                    segment,
+                                    startTime,
+                                    endTime,
+                                    trackId,
+                                    trackName,
+                                    trackType,
+                                    currentTrackOrder,
+                                    true,
+                                    fadeIndex));
                             }
                             break;
 
@@ -213,9 +231,145 @@ namespace CapCutDataParser
             return input?.Replace("\r\n", "\n").Replace("\r", "\n");
         }
 
+        private static CapCutMediaUsage CreateMediaUsage(
+            CapCutMediaType mediaType,
+            string materialId,
+            string name,
+            string path,
+            Dictionary<string, object> segment,
+            TimeSpan start,
+            TimeSpan end,
+            string trackId,
+            string trackName,
+            string trackType,
+            int trackOrder,
+            bool hasSoundSeparated,
+            Dictionary<string, AudioFadeDefinition> fadeIndex)
+        {
+            var usage = new CapCutMediaUsage
+            {
+                MediaType = mediaType,
+                MaterialId = materialId,
+                Name = name,
+                Path = path,
+                Start = start,
+                End = end,
+                TrackId = trackId,
+                TrackName = trackName,
+                TrackType = trackType,
+                TrackOrder = trackOrder,
+                HasSoundSeparated = hasSoundSeparated
+            };
+
+            PopulateMediaSegmentMetadata(segment, usage, fadeIndex);
+            return usage;
+        }
+
+        private static void PopulateMediaSegmentMetadata(Dictionary<string, object> segment, CapCutMediaUsage usage, Dictionary<string, AudioFadeDefinition> fadeIndex)
+        {
+            if (segment == null || usage == null)
+            {
+                return;
+            }
+
+            var sourceTimerange = GetObject(segment, "source_timerange");
+            if (sourceTimerange != null)
+            {
+                usage.SourceStart = ToTimeSpan(GetLong(sourceTimerange, "start"));
+                usage.SourceDuration = ToTimeSpan(GetLong(sourceTimerange, "duration"));
+            }
+
+            var speed = GetDouble(segment, "speed", 1d);
+            if (double.IsNaN(speed) || double.IsInfinity(speed) || speed <= 0)
+            {
+                speed = 1d;
+            }
+            usage.PlaybackRate = speed;
+
+            var volume = GetDouble(segment, "volume", 1d);
+            if (double.IsNaN(volume) || double.IsInfinity(volume))
+            {
+                volume = 1d;
+            }
+            usage.Volume = volume;
+
+            usage.Reverse = GetBool(segment, "reverse");
+            ApplyFadeMetadata(segment, usage, fadeIndex);
+        }
+
+        private static void ApplyFadeMetadata(Dictionary<string, object> segment, CapCutMediaUsage usage, Dictionary<string, AudioFadeDefinition> fadeIndex)
+        {
+            if (segment == null || usage == null || fadeIndex == null || fadeIndex.Count == 0)
+            {
+                return;
+            }
+
+            var extraRefs = GetList(segment, "extra_material_refs");
+            if (extraRefs == null || extraRefs.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var entry in extraRefs)
+            {
+                string refId = entry as string;
+                if (refId == null && entry is Dictionary<string, object> dict)
+                {
+                    refId = GetString(dict, "id");
+                }
+
+                if (string.IsNullOrWhiteSpace(refId))
+                {
+                    continue;
+                }
+
+                if (fadeIndex.TryGetValue(refId, out var fade))
+                {
+                    usage.FadeIn = fade.FadeIn;
+                    usage.FadeOut = fade.FadeOut;
+                    break;
+                }
+            }
+        }
+
+        private static Dictionary<string, AudioFadeDefinition> BuildAudioFadeIndex(Dictionary<string, object> materials)
+        {
+            var index = new Dictionary<string, AudioFadeDefinition>(StringComparer.OrdinalIgnoreCase);
+            if (materials == null)
+            {
+                return index;
+            }
+
+            foreach (var fade in EnumerateObjects(GetList(materials, "audio_fades")))
+            {
+                var id = GetString(fade, "id");
+                if (string.IsNullOrWhiteSpace(id) || index.ContainsKey(id))
+                {
+                    continue;
+                }
+
+                var fadeInDuration = GetLong(fade, "fade_in_duration");
+                var fadeOutDuration = GetLong(fade, "fade_out_duration");
+
+                index[id] = new AudioFadeDefinition
+                {
+                    FadeIn = fadeInDuration > 0 ? ToTimeSpan(fadeInDuration) : (TimeSpan?)null,
+                    FadeOut = fadeOutDuration > 0 ? ToTimeSpan(fadeOutDuration) : (TimeSpan?)null
+                };
+            }
+
+            return index;
+        }
+
         private static TimeSpan ToTimeSpan(long microseconds)
         {
             return TimeSpan.FromTicks(microseconds * 10);
+        }
+
+        private sealed class AudioFadeDefinition
+        {
+            public TimeSpan? FadeIn { get; set; }
+            public TimeSpan? FadeOut { get; set; }
         }
 
         private static string DecryptString(string input)

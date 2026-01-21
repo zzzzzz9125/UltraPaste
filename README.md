@@ -132,3 +132,6 @@ A pre-input panel for subtitle generation:
 ---
 
 **Tip:** Always check the GitHub repo for updates and community support! 🚀  
+
+## License
+UltraPaste! is distributed under the GNU Lesser General Public License v3.0. See `LICENSE` for details.
