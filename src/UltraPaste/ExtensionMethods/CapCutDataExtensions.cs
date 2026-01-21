@@ -8,8 +8,6 @@ using System;
 using System.Linq;
 using CapCutDataParser;
 using System.Collections.Generic;
-using System.Windows.Forms;
-
 
 namespace UltraPaste.ExtensionMethods
 {

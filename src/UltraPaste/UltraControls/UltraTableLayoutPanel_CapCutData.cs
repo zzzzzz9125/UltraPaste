@@ -14,15 +14,18 @@ namespace UltraPaste.UltraControls
 
         private sealed class DraftItem
         {
-            public DraftItem(string displayName, string jsonPath)
+            public DraftItem(string displayName, string jsonPath, DateTime lastWriteTime)
             {
                 DisplayName = displayName;
                 JsonPath = jsonPath;
+                LastWriteTime = lastWriteTime;
             }
 
             public string DisplayName { get; }
 
             public string JsonPath { get; }
+
+            public DateTime LastWriteTime { get; }
 
             public override string ToString()
             {
@@ -140,6 +143,8 @@ namespace UltraPaste.UltraControls
             AddDraftItems(items, seen, I18n.Translation.Jianying, GetAllJianyingRoots());
             AddDraftItems(items, seen, I18n.Translation.CapCut, GetAllCapCutRoots());
 
+            items.Sort((a, b) => b.LastWriteTime.CompareTo(a.LastWriteTime));
+
             _draftCombo.BeginUpdate();
             _draftCombo.Items.Clear();
             foreach (DraftItem item in items)
@@ -173,7 +178,7 @@ namespace UltraPaste.UltraControls
                         continue;
                     }
 
-                    items.Add(new DraftItem($"[{prefix}] {folderName}", jsonPath));
+                    items.Add(new DraftItem($"[{prefix}] {folderName}", jsonPath, GetFileLastWriteTime(jsonPath)));
                 }
             }
         }
@@ -288,6 +293,23 @@ namespace UltraPaste.UltraControls
             }
 
             return paths;
+        }
+
+        private static DateTime GetFileLastWriteTime(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return DateTime.MinValue;
+            }
+
+            try
+            {
+                return File.GetLastWriteTime(path);
+            }
+            catch
+            {
+                return DateTime.MinValue;
+            }
         }
     }
 }

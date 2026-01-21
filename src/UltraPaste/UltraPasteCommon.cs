@@ -398,6 +398,10 @@ namespace UltraPaste
             List<TrackEvent> addedEvents = data.GenerateEventsToVegas(ref start, set.CloseGap, set.SubtitlesOnly, out SubtitlesData subtitles);
             if (subtitles != null)
             {
+                foreach (TrackEvent ev in addedEvents)
+                {
+                    ev.Track.Selected = false;
+                }
                 List<TrackEvent> subtitleEvents = DoPaste_Subtitles(subtitles, ref start, Settings.SubtitlesImport, 2);
                 foreach (TrackEvent subEv in subtitleEvents)
                 {

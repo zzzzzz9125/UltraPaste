@@ -38,7 +38,7 @@ namespace CapCutDataParser
         public string TrackType { get; set; }
         public TimeSpan? FadeIn { get; set; }
         public TimeSpan? FadeOut { get; set; }
-        public bool HasSoundSeparated { get; set; } = true;
+        public bool HasSoundSeparated { get; set; } = false;
 
         public void UpdateFullFilePath(string draftPath)
         {
