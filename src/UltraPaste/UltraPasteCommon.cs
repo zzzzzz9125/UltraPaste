@@ -17,7 +17,6 @@ namespace UltraPaste
 {
     using static VirtualKeyboard;
     using Utilities;
-    using ExtensionMethods;
     using CapCutDataParser;
     using ReaperDataParser;
 
@@ -28,14 +27,15 @@ namespace UltraPaste
         public const string VERSION = "v1.4.0";
         public static Vegas Vegas { get { return myVegas; } set { myVegas = value; } }
         private static Vegas myVegas;
-        public static KeyValuePair<string, byte[]> LastPathAndImageBytes = new KeyValuePair<string, byte[]>();
+        private static KeyValuePair<string, byte[]> lastImagePathAndBytes = new KeyValuePair<string, byte[]>();
         public static TextBox InputBoxTextBox { get; set; }
         public static SubtitlesData InputBoxSubtitlesData { get; set; }
         public static string InputBoxString { get; set; }
 
         public static void DoPaste(bool isSubtitlesInput = false)
         {
-            if (Clipboard.GetDataObject() == null)
+            IDataObject dataObject = Clipboard.GetDataObject();
+            if (dataObject == null)
             {
                 return;
             }
@@ -54,112 +54,21 @@ namespace UltraPaste
 
                 List<TrackEvent> evs = new List<TrackEvent>();
 
-                if ((Settings.SubtitlesImport.InputBoxUseUniversal || isSubtitlesInput) && InputBoxSubtitlesData?.Subtitles.Count > 0)
-                {
-                    InputBoxSubtitlesData.SplitCharactersAndLines(Settings.SubtitlesImport.InputBoxMaxCharacters, Settings.SubtitlesImport.InputBoxIgnoreWord, Settings.SubtitlesImport.InputBoxMaxLines, Settings.SubtitlesImport.InputBoxMultipleTracks);
-                    SubtitlesData data = new SubtitlesData();
-                    data.Subtitles.Add(InputBoxSubtitlesData.Subtitles[0]);
-                    data.Subtitles[0].Length = TimeSpan.FromMilliseconds(length.ToMilliseconds());
-                    evs.AddRange(DoPaste_Subtitles(data, ref start, Settings.SubtitlesImport, 1));
-                    string str = string.Empty;
-                    for (int i = 1; i < InputBoxSubtitlesData.Subtitles.Count; i++)
-                    {
-                        str += string.Join("\r\n", InputBoxSubtitlesData.Subtitles[i].TextLines) + (i != InputBoxSubtitlesData.Subtitles.Count - 1 ? "\r\n" : string.Empty);
-                    }
-                    if (InputBoxTextBox != null)
-                    {
-                        InputBoxTextBox.Text = str;
-                    }
-                    else
-                    {
-                        InputBoxString = str;
-                    }
-                    InputBoxSubtitlesData = SubtitlesData.Parser.ParseFromStrings(InputBoxString, null);
-                }
+                bool hasEvents = HandleSubtitlesInput(isSubtitlesInput, ref start, length, evs);
 
-                if (evs.Count == 0)
+                if (!hasEvents)
                 {
                     if (isSubtitlesInput)
                     {
                         return;
                     }
 
-                    if (Clipboard.ContainsImage())
-                    {
-                        DoPaste_ClipboardImage(evs, ref start, length);
-                    }
-                    else if (Clipboard.ContainsFileDropList())
-                    {
-                        DoPaste_FileDrop(evs, start, length, out projectFileToOpen, out scriptFileToRun);
-                    }
-                    else
-                    {
-                        bool success = false;
-                        foreach (string format in Clipboard.GetDataObject().GetFormats())
-                        {
-                            object obj = Clipboard.GetData(format);
-                            if (obj is MemoryStream ms)
-                            {
-                                byte[] bytes = ms.ToArray();
-
-                                if (bytes == null || bytes.Length == 0)
-                                {
-                                    continue;
-                                }
-
-                                switch (format.ToUpperInvariant())
-                                {
-                                    // "Sony Vegas Meta-Data 5.0" or "Vegas Meta-Data 5.0" for VEGAS Pro
-                                    case "SONY VEGAS META-DATA 5.0" when VegasCommonHelper.VegasVersion < 14:
-                                    case "VEGAS META-DATA 5.0" when VegasCommonHelper.VegasVersion > 13:
-                                        if (Settings.VegasData.SelectivelyPasteEventAttributes && myVegas.Project.GetSelectedEvents<TrackEvent>().Count > 0)
-                                        {
-                                            pasteAttributes = true;
-                                            success = true;
-                                        }
-                                        break;
-
-                                    // "REAPERMedia" for Cockos REAPER
-                                    case "REAPERMEDIA":
-                                        evs.AddRange(DoPaste_Clipboard_ReaperData(bytes, ref start));
-                                        success = true;
-                                        break;
-
-                                    // "PProAE/Exchange/TrackItem" for Adobe Premiere Pro and Adobe After Effects (not be implemented...)
-                                    case "PPROAE/EXCHANGE/TRACKITEM":
-
-                                        break;
-
-                                    default:
-                                        break;
-                                }
-                            }
-
-                            else if (Clipboard.ContainsText())
-                            {
-                                evs.AddRange(DoPaste_Subtitles_Strings(Clipboard.GetText(), ref start, length));
-                                success = true;
-                            }
-
-                            if (success)
-                            {
-                                break;
-                            }
-                        }
-                    }
+                    ProcessClipboardData(evs, dataObject, ref start, length, ref projectFileToOpen, ref scriptFileToRun, ref pasteAttributes);
                 }
 
                 if (evs.Count > 0)
                 {
-                    foreach (TrackEvent ev in myVegas.Project.GetSelectedEvents<TrackEvent>())
-                    {
-                        ev.Selected = false;
-                    }
-                    foreach (TrackEvent ev in evs)
-                    {
-                        ev.Selected = true;
-                    }
-                    myVegas.UpdateUI();
+                    UpdateSelectedEvents(evs);
                 }
             }
             if (projectFileToOpen != null)
@@ -193,9 +102,136 @@ namespace UltraPaste
             }
         }
 
+        private static void ProcessClipboardData(List<TrackEvent> evs, IDataObject dataObject, ref Timecode start, Timecode length, ref string projectFileToOpen, ref string scriptFileToRun, ref bool pasteAttributes)
+        {
+            if (Clipboard.ContainsImage())
+            {
+                DoPaste_ClipboardImage(evs, ref start, length);
+                return;
+            }
+
+            if (Clipboard.ContainsFileDropList())
+            {
+                DoPaste_FileDrop(evs, start, length, out projectFileToOpen, out scriptFileToRun);
+                return;
+            }
+
+            TryHandleClipboardFormats(dataObject, evs, ref start, length, ref pasteAttributes);
+        }
+
+        private static bool TryHandleClipboardFormats(IDataObject dataObject, List<TrackEvent> evs, ref Timecode start, Timecode length, ref bool pasteAttributes)
+        {
+            foreach (string format in dataObject.GetFormats())
+            {
+                object obj = Clipboard.GetData(format);
+                bool handled = false;
+
+                if (obj is MemoryStream ms)
+                {
+                    handled = TryHandleMemoryStreamFormat(format, ms.ToArray(), evs, ref start, ref pasteAttributes);
+                }
+                else if (Clipboard.ContainsText())
+                {
+                    evs.AddRange(DoPaste_Subtitles_Strings(Clipboard.GetText(), ref start, length));
+                    handled = true;
+                }
+
+                if (handled)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TryHandleMemoryStreamFormat(string format, byte[] bytes, List<TrackEvent> evs, ref Timecode start, ref bool pasteAttributes)
+        {
+            if (bytes == null || bytes.Length == 0)
+            {
+                return false;
+            }
+
+            switch (format.ToUpperInvariant())
+            {
+                // "Sony Vegas Meta-Data 5.0" or "Vegas Meta-Data 5.0" for VEGAS Pro
+                case "SONY VEGAS META-DATA 5.0" when VegasCommonHelper.VegasVersion < 14:
+                case "VEGAS META-DATA 5.0" when VegasCommonHelper.VegasVersion > 13:
+                    if (Settings.VegasData.SelectivelyPasteEventAttributes && myVegas.Project.GetSelectedEvents<TrackEvent>().Count > 0)
+                    {
+                        pasteAttributes = true;
+                        return true;
+                    }
+                    break;
+
+                // "REAPERMedia" for Cockos REAPER
+                case "REAPERMEDIA":
+                    evs.AddRange(DoPaste_Clipboard_ReaperData(bytes, ref start));
+                    return true;
+
+                // "STANDARD MIDI FILE" for MIDI data (from Cockos REAPER) (not be implemented...)
+                case "STANDARD MIDI FILE":
+
+                    break;
+
+                // "PProAE/Exchange/TrackItem" for Adobe Premiere Pro and Adobe After Effects (not be implemented...)
+                case "PPROAE/EXCHANGE/TRACKITEM":
+
+                    break;
+
+                default:
+                    break;
+            }
+
+            return false;
+        }
+
+        private static bool HandleSubtitlesInput(bool isSubtitlesInput, ref Timecode start, Timecode length, List<TrackEvent> evs)
+        {
+            if (!(Settings.SubtitlesImport.InputBoxUseUniversal || isSubtitlesInput) || InputBoxSubtitlesData == null || InputBoxSubtitlesData.Subtitles.Count <= 0)
+            {
+                return false;
+            }
+
+            InputBoxSubtitlesData.SplitCharactersAndLines(Settings.SubtitlesImport.InputBoxMaxCharacters, Settings.SubtitlesImport.InputBoxIgnoreWord, Settings.SubtitlesImport.InputBoxMaxLines, Settings.SubtitlesImport.InputBoxMultipleTracks);
+            SubtitlesData data = new SubtitlesData();
+            data.Subtitles.Add(InputBoxSubtitlesData.Subtitles[0]);
+            data.Subtitles[0].Length = TimeSpan.FromMilliseconds(length.ToMilliseconds());
+            evs.AddRange(DoPaste_Subtitles(data, ref start, Settings.SubtitlesImport, 1));
+            string str = string.Empty;
+            for (int i = 1; i < InputBoxSubtitlesData.Subtitles.Count; i++)
+            {
+                str += string.Join("\r\n", InputBoxSubtitlesData.Subtitles[i].TextLines) + (i != InputBoxSubtitlesData.Subtitles.Count - 1 ? "\r\n" : string.Empty);
+            }
+            if (InputBoxTextBox != null)
+            {
+                InputBoxTextBox.Text = str;
+            }
+            else
+            {
+                InputBoxString = str;
+            }
+            InputBoxSubtitlesData = SubtitlesData.Parser.ParseFromStrings(InputBoxString, null);
+
+            return evs.Count > 0;
+        }
+
+        private static void UpdateSelectedEvents(List<TrackEvent> evs)
+        {
+            foreach (TrackEvent ev in myVegas.Project.GetSelectedEvents<TrackEvent>())
+            {
+                ev.Selected = false;
+            }
+            foreach (TrackEvent ev in evs)
+            {
+                ev.Selected = true;
+            }
+            myVegas.UpdateUI();
+        }
+
         private static void DoPaste_ClipboardImage(List<TrackEvent> evs, ref Timecode start, Timecode length, UltraPasteSettings.ClipboardImageSettings set = null)
         {
-            string path = LastPathAndImageBytes.Key;
+            string path = lastImagePathAndBytes.Key;
             if (set == null)
             {
                 set = Settings.ClipboardImage;
@@ -212,19 +248,25 @@ namespace UltraPaste
                     imgBytes = ms.ToArray();
                 }
             }
-            else
+
+            if (!ImageDataHelper.IsPngFile(imgBytes))
+            {
+                imgBytes = null;
+            }
+
+            if (imgBytes == null)
             {
                 img = Clipboard.GetImage();
                 if (img == null && Clipboard.ContainsData(DataFormats.Dib))
                 {
                     using (MemoryStream ms = Clipboard.GetData(DataFormats.Dib) as MemoryStream)
                     {
-                        img = DibImageDataHelper.ConvertToBitmap(ms.ToArray());
+                        img = ImageDataHelper.DibToBitmap(ms.ToArray());
                     }
                 }
                 if (img != null)
                 {
-                    using (MemoryStream ms = Clipboard.GetData(DataFormats.Dib) as MemoryStream)
+                    using (MemoryStream ms = new MemoryStream())
                     {
                         img.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
                         imgBytes = ms.ToArray();
@@ -232,7 +274,7 @@ namespace UltraPaste
                 }
             }
 
-            if (imgBytes?.Length > 0 && Path.GetDirectoryName(filePath) != Path.GetDirectoryName(path) || LastPathAndImageBytes.Value == null || Convert.ToBase64String(imgBytes) != Convert.ToBase64String(LastPathAndImageBytes.Value))
+            if (imgBytes?.Length > 0 && Path.GetDirectoryName(filePath) != Path.GetDirectoryName(path) || lastImagePathAndBytes.Value == null || !imgBytes.IsSameTo(lastImagePathAndBytes.Value))
             {
                 path = filePath;
                 string ext = Path.GetExtension(path)?.ToLowerInvariant();
@@ -244,7 +286,7 @@ namespace UltraPaste
                 {
                     File.WriteAllBytes(path, imgBytes);
                 }
-                LastPathAndImageBytes = new KeyValuePair<string, byte[]>(path, imgBytes);
+                lastImagePathAndBytes = new KeyValuePair<string, byte[]>(path, imgBytes);
             }
 
             List<VideoEvent> addedEvents = myVegas.GenerateEvents<VideoEvent>(path, start, length);
@@ -272,6 +314,7 @@ namespace UltraPaste
         {
             List<string> filePaths = Clipboard.GetFileDropList()?.GetFilePathsFromPathList() ?? new List<string>();
             List<string> mediaPaths = new List<string>();
+            List<string> lutPaths = new List<string>();
             projectFileToOpen = null;
             scriptFileToRun = null;
             foreach (string path in filePaths)
@@ -331,6 +374,10 @@ namespace UltraPaste
                         }
                         break;
 
+                    case ".cube":
+                        lutPaths.Add(path);
+                        break;
+
                     default:
                         mediaPaths.Add(path);
                         break;
@@ -355,6 +402,19 @@ namespace UltraPaste
             }
 
             DoPaste_FileDrop_MediaFiles(ref evs, mediaPaths, ref start, length);
+
+            if (evs.Count == 0)
+            {
+                return;
+            }
+
+            if (lutPaths.Count > 0)
+            {
+                foreach (string lutPath in lutPaths)
+                {
+                    DoPaste_FileDrop_Lut(evs, lutPath);
+                }
+            }
         }
 
         private static List<TrackEvent> DoPaste_FileDrop_ReaperData(string path, ref Timecode start, UltraPasteSettings.ReaperDataSettings set = null)
@@ -362,6 +422,33 @@ namespace UltraPaste
             return DoPaste_ReaperData(ReaperParser.ParseFile(path), ref start, set);
         }
 
+        private static void DoPaste_FileDrop_Lut<T>(List<T> evs, string path) where T : TrackEvent
+        {
+            if (evs == null || typeof(T) == typeof(AudioEvent) || evs.Count == 0)
+            {
+                return;
+            }
+
+            PlugInNode node = myVegas.VideoFX.FindChildByUniqueID("{Svfx:com.vegascreativesoftware:lutfilter}") ?? myVegas.VideoFX.FindChildByUniqueID("{Svfx:com.sonycreativesoftware:lutfilter}");
+            foreach (T ev in evs)
+            {
+                if (ev is VideoEvent vEv)
+                {
+                    Effect ef = new Effect(node);
+                    vEv.Effects.Add(ef);
+                    OFXEffect ofx = ef.OFXEffect;
+                    if (ofx != null)
+                    {
+                        OFXStringParameter para =  ofx.FindParameterByName("LUTFilename") as OFXStringParameter;
+                        if (para != null)
+                        {
+                            para.Value = path;
+                        }
+                    }
+                }
+
+            }
+        }
 
         private static List<TrackEvent> DoPaste_Clipboard_ReaperData(byte[] bytes, ref Timecode start, UltraPasteSettings.ReaperDataSettings set = null)
         {
@@ -677,7 +764,7 @@ namespace UltraPaste
                 }
                 if (imgBytes?.Length > 0)
                 {
-                    LastPathAndImageBytes = new KeyValuePair<string, byte[]>(path, imgBytes);
+                    lastImagePathAndBytes = new KeyValuePair<string, byte[]>(path, imgBytes);
                 }
             }
         }

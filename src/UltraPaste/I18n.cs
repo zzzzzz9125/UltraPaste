@@ -4,13 +4,13 @@ using System.Collections.Generic;
 
 namespace UltraPaste
 {
-    using ExtensionMethods;
+    using Utilities;
     public static class I18n
     {
         public static TranslationSettings Settings { get; private set; }
         public class TranslationSettings
         {
-            public string Current = System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+            public string Current = System.Globalization.CultureInfo.CurrentCulture.Name;
             public string LastUpdatedVersion = UltraPasteCommon.VERSION;
             public List<TranslationLanguage> Languages { get { return languages; } }
             private readonly List<TranslationLanguage> languages = new List<TranslationLanguage>();
@@ -34,22 +34,19 @@ namespace UltraPaste
 
             public string[] StartPositionType, MediaImportAddType, MediaImportStreamType, MediaImportEventLengthType, VegImportType;
 
-            public void FillMissingTranslations(TranslationStrings source)
+            public void ForceUpdateTranslations(TranslationStrings source)
             {
                 PropertyInfo[] properties = typeof(TranslationStrings).GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
                 foreach (PropertyInfo property in properties)
                 {
-                    if (property.PropertyType != typeof(string)) continue;
-
-                    string targetValue = (string)property.GetValue(this);
-
-                    if (string.IsNullOrEmpty(targetValue))
+                    if (property.PropertyType != typeof(string))
                     {
-                        string sourceValue = (string)property.GetValue(source);
-
-                        property.SetValue(this, sourceValue);
+                        continue;
                     }
+
+                    string sourceValue = (string)property.GetValue(source);
+                    property.SetValue(this, sourceValue);
                 }
             }
 
@@ -211,8 +208,9 @@ namespace UltraPaste
                 {
                     foreach (TranslationLanguage tran in Settings.Languages)
                     {
-                        tran.Translation.FillMissingTranslations(new TranslationStrings(tran.ShortName));
+                        tran.Translation.ForceUpdateTranslations(new TranslationStrings(tran.ShortName));
                     }
+                    Settings.LastUpdatedVersion = UltraPasteCommon.VERSION;
                     SaveSettingsToXml();
                 }
             }
@@ -236,7 +234,7 @@ namespace UltraPaste
                 Settings.Languages.Add(tran);
                 SaveSettingsToXml();
             }
-            string language = Settings.Current ?? System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+            string language = Settings.Current ?? System.Globalization.CultureInfo.CurrentCulture.Name;
 
             bool success = false;
 

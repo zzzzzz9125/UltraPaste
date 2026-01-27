@@ -39,19 +39,24 @@ namespace CapCutDataParser
         public TimeSpan? FadeIn { get; set; }
         public TimeSpan? FadeOut { get; set; }
         public bool HasSoundSeparated { get; set; } = false;
+        public int SourceWidth { get; set; }
+        public int SourceHeight { get; set; }
+        public double? FrameRate { get; set; }
+        public CapCutMaskData Mask { get; set; }
 
         public void UpdateFullFilePath(string draftPath)
         {
-            if (string.IsNullOrEmpty(draftPath) || string.IsNullOrEmpty(filePath))
+            if (!string.IsNullOrEmpty(draftPath) && !string.IsNullOrEmpty(filePath))
             {
-                return;
+                string sanitizedPath = CapCutData.DraftPathRegex.Replace(filePath, string.Empty).TrimStart(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+                string path = System.IO.Path.Combine(draftPath, sanitizedPath);
+                if (System.IO.File.Exists(path))
+                {
+                    filePathFull = path;
+                }
             }
-            
-            string path = System.IO.Path.Combine(draftPath, CapCutData.DraftPathRegex.Replace(filePath, ""));
-            if (System.IO.File.Exists(path))
-            {
-                filePathFull = path;
-            }
+
+            Mask?.UpdateLoaderWorkspace(draftPath);
         }
     }
 }

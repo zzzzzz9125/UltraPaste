@@ -12,64 +12,18 @@ using System.Text.RegularExpressions;
 
 namespace UltraPaste
 {
-    using CapCutDataParser;
-    using ExtensionMethods;
+    using Utilities;
     public class UltraPasteSettings
     {
-        public GeneralSettings General
-        {
-            get { return general; }
-            set { general = value; }
-        }
-        private GeneralSettings general = new GeneralSettings();
-        public MediaImportSettings MediaImport
-        {
-            get { return mediaImport; }
-            set { mediaImport = value; }
-        }
-        private MediaImportSettings mediaImport = new MediaImportSettings();
-        public ReaperDataSettings ReaperData
-        {
-            get { return reaperData; }
-            set { reaperData = value; }
-        }
-        private ReaperDataSettings reaperData = new ReaperDataSettings();
-        public CapCutDataSettings CapCutData
-        {
-            get { return capCutData; }
-            set { capCutData = value; }
-        }
-        private CapCutDataSettings capCutData = new CapCutDataSettings();
-        public ClipboardImageSettings ClipboardImage
-        {
-            get { return clipboardImage; }
-            set { clipboardImage = value; }
-        }
-        private ClipboardImageSettings clipboardImage = new ClipboardImageSettings();
-        public VegasDataSettings VegasData
-        {
-            get { return vegasData; }
-            set { vegasData = value; }
-        }
-        private VegasDataSettings vegasData = new VegasDataSettings();
-        public SubtitlesImportSettings SubtitlesImport
-        {
-            get { return subtitlesImport; }
-            set { subtitlesImport = value; }
-        }
-        private SubtitlesImportSettings subtitlesImport = new SubtitlesImportSettings();
-        public PsdImportSettings PsdImport
-        {
-            get { return psdImport; }
-            set { psdImport = value; }
-        }
-        private PsdImportSettings psdImport = new PsdImportSettings();
-        public List<CustomMediaImportSettings> Customs
-        {
-            get { return customs; }
-            set { customs = value; }
-        }
-        private List<CustomMediaImportSettings> customs = new List<CustomMediaImportSettings>();
+        public GeneralSettings General { get; set; } = new GeneralSettings();
+        public MediaImportSettings MediaImport { get; set; } = new MediaImportSettings();
+        public ReaperDataSettings ReaperData { get; set; } = new ReaperDataSettings();
+        public CapCutDataSettings CapCutData { get; set; } = new CapCutDataSettings();
+        public ClipboardImageSettings ClipboardImage { get; set; } = new ClipboardImageSettings();
+        public VegasDataSettings VegasData { get; set; } = new VegasDataSettings();
+        public SubtitlesImportSettings SubtitlesImport { get; set; } = new SubtitlesImportSettings();
+        public PsdImportSettings PsdImport { get; set; } = new PsdImportSettings();
+        public List<CustomMediaImportSettings> Customs { get; set; } = new List<CustomMediaImportSettings>();
 
         public class GeneralSettings
         {

@@ -1,4 +1,4 @@
-﻿#if !Sony
+#if !Sony
 using ScriptPortal.Vegas;
 #else
 using Sony.Vegas;
@@ -7,10 +7,9 @@ using Sony.Vegas;
 using System;
 using System.Collections.Generic;
 
-namespace UltraPaste
+namespace UltraPaste.Utilities
 {
-    using ExtensionMethods;
-    public static class TrackEventExtensions
+    internal static class TrackEventHelper
     {
         // a complex implementation to import File as Events to Timeline
         // when media path is invalid, it won't generate any event

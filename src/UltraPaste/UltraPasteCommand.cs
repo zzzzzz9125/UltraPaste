@@ -9,7 +9,7 @@ using System.Collections.Generic;
 
 namespace UltraPaste
 {
-    using ExtensionMethods;
+    using Utilities;
 
     internal class UltraPasteCommand
     {

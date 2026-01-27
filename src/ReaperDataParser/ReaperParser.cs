@@ -8,7 +8,7 @@ namespace ReaperDataParser
 {
     public static class ReaperParser
     {
-        public static string[] EnvelopeStrings = new[] { "ENVSEG", "VOLENV", "VOLENV2", "PANENV", "PANENV2", "MUTEENV" };
+        private static string[] EnvelopeStrings = new[] { "ENVSEG", "VOLENV", "VOLENV2", "PANENV", "PANENV2", "MUTEENV" };
         private static readonly HashSet<string> EnvelopeTypeSet = new HashSet<string>(EnvelopeStrings, StringComparer.OrdinalIgnoreCase);
         private static readonly char[] TokenSeparators = { ' ', '\t' };
         private static readonly StringComparer BlockComparer = StringComparer.OrdinalIgnoreCase;
@@ -27,7 +27,7 @@ namespace ReaperDataParser
                 throw new FileNotFoundException("Unable to locate the specified Reaper project file.", filePath);
             }
 
-            ReaperData data = Parse(File.ReadAllBytes(filePath));
+            ReaperData data = Parse(File.ReadAllText(filePath));
             if (data != null)
             {
                 data.ProjectFilePath = filePath;

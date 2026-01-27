@@ -1,24 +1,26 @@
 ﻿using System;
-using System.IO;
 using System.Drawing;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace UltraPaste.Utilities
 {
-    internal static class DibImageDataHelper
+    internal static class ImageDataHelper
     {
-        public static Bitmap ConvertToBitmap(byte[] dibData)
+        public static Bitmap DibToBitmap(byte[] dibData)
         {
-            BITMAPINFOHEADER infoHeader = GetInfoHeader(dibData);
-            int colorTableSize = CalculateColorTableSize(infoHeader);
-            byte[] fileHeader = CreateBitmapFileHeader(infoHeader, colorTableSize, dibData.Length);
+            BITMAPINFOHEADER infoHeader = DibGetInfoHeader(dibData);
+            int colorTableSize = DibCalculateColorTableSize(infoHeader);
+            byte[] fileHeader = DibCreateBitmapFileHeader(infoHeader, colorTableSize, dibData.Length);
             MemoryStream mergedStream = new MemoryStream();
             mergedStream.Write(fileHeader, 0, fileHeader.Length);
             mergedStream.Write(dibData, 0, dibData.Length);
             mergedStream.Position = 0;
             return new Bitmap(mergedStream);
         }
-        private static BITMAPINFOHEADER GetInfoHeader(byte[] dibData)
+
+        private static BITMAPINFOHEADER DibGetInfoHeader(byte[] dibData)
         {
             GCHandle handle = GCHandle.Alloc(dibData, GCHandleType.Pinned);
             try
@@ -32,7 +34,7 @@ namespace UltraPaste.Utilities
             }
         }
 
-        private static int CalculateColorTableSize(BITMAPINFOHEADER infoHeader)
+        private static int DibCalculateColorTableSize(BITMAPINFOHEADER infoHeader)
         {
             if (infoHeader.biClrUsed != 0)
                 return (int)infoHeader.biClrUsed * 4;
@@ -46,7 +48,7 @@ namespace UltraPaste.Utilities
             }
         }
 
-        private static byte[] CreateBitmapFileHeader(BITMAPINFOHEADER infoHeader, int colorTableSize, int dibDataLength)
+        private static byte[] DibCreateBitmapFileHeader(BITMAPINFOHEADER infoHeader, int colorTableSize, int dibDataLength)
         {
             byte[] header = new byte[14];
             header[0] = (byte)'B';
@@ -75,6 +77,17 @@ namespace UltraPaste.Utilities
             public int biYPelsPerMeter;
             public uint biClrUsed;
             public uint biClrImportant;
+        }
+
+        public static bool IsPngFile(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length < 8)
+            {
+                return false;
+            }
+
+            byte[] pngHeader = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+            return bytes.Take(8).SequenceEqual(pngHeader);
         }
     }
 }

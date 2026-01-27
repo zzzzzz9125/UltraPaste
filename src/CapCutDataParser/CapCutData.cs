@@ -2,10 +2,10 @@
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
 
 namespace CapCutDataParser
 {
@@ -90,8 +90,14 @@ namespace CapCutDataParser
             var materials = GetObject(root, "materials");
             var materialIndex = MaterialIndex.Create(materials);
             var fadeIndex = BuildAudioFadeIndex(materials);
+            var maskIndex = BuildMaskIndex(materials);
             var mediaUsages = new List<CapCutMediaUsage>();
             var subtitles = new List<CapCutSubtitleBlock>();
+            double defaultFrameRate = GetDouble(root, "fps", 0d);
+            if (defaultFrameRate <= 0)
+            {
+                defaultFrameRate = 30d;
+            }
 
             int trackOrder = 0;
             foreach (var track in EnumerateObjects(GetList(root, "tracks")))
@@ -144,7 +150,11 @@ namespace CapCutDataParser
                                     trackType,
                                     currentTrackOrder,
                                     video.HasSoundSeparated,
-                                    fadeIndex));
+                                    fadeIndex,
+                                    maskIndex,
+                                    video.Width,
+                                    video.Height,
+                                    video.FrameRate ?? defaultFrameRate));
                             }
                             break;
 
@@ -164,7 +174,11 @@ namespace CapCutDataParser
                                     trackType,
                                     currentTrackOrder,
                                     true,
-                                    fadeIndex));
+                                    fadeIndex,
+                                    maskIndex,
+                                    0,
+                                    0,
+                                    null));
                             }
                             break;
 
@@ -244,7 +258,11 @@ namespace CapCutDataParser
             string trackType,
             int trackOrder,
             bool hasSoundSeparated,
-            Dictionary<string, AudioFadeDefinition> fadeIndex)
+            Dictionary<string, AudioFadeDefinition> fadeIndex,
+            Dictionary<string, CapCutMaskData> maskIndex,
+            int sourceWidth,
+            int sourceHeight,
+            double? frameRate)
         {
             var usage = new CapCutMediaUsage
             {
@@ -258,14 +276,17 @@ namespace CapCutDataParser
                 TrackName = trackName,
                 TrackType = trackType,
                 TrackOrder = trackOrder,
-                HasSoundSeparated = hasSoundSeparated
+                HasSoundSeparated = hasSoundSeparated,
+                SourceWidth = sourceWidth,
+                SourceHeight = sourceHeight,
+                FrameRate = frameRate
             };
 
-            PopulateMediaSegmentMetadata(segment, usage, fadeIndex);
+            PopulateMediaSegmentMetadata(segment, usage, fadeIndex, maskIndex);
             return usage;
         }
 
-        private static void PopulateMediaSegmentMetadata(Dictionary<string, object> segment, CapCutMediaUsage usage, Dictionary<string, AudioFadeDefinition> fadeIndex)
+        private static void PopulateMediaSegmentMetadata(Dictionary<string, object> segment, CapCutMediaUsage usage, Dictionary<string, AudioFadeDefinition> fadeIndex, Dictionary<string, CapCutMaskData> maskIndex)
         {
             if (segment == null || usage == null)
             {
@@ -295,6 +316,7 @@ namespace CapCutDataParser
 
             usage.Reverse = GetBool(segment, "reverse");
             ApplyFadeMetadata(segment, usage, fadeIndex);
+            ApplyMaskMetadata(segment, usage, maskIndex);
         }
 
         private static void ApplyFadeMetadata(Dictionary<string, object> segment, CapCutMediaUsage usage, Dictionary<string, AudioFadeDefinition> fadeIndex)
@@ -332,6 +354,44 @@ namespace CapCutDataParser
             }
         }
 
+        private static void ApplyMaskMetadata(Dictionary<string, object> segment, CapCutMediaUsage usage, Dictionary<string, CapCutMaskData> maskIndex)
+        {
+            if (segment == null || usage == null || maskIndex == null || maskIndex.Count == 0 || usage.SourceWidth <= 0 || usage.SourceHeight <= 0)
+            {
+                return;
+            }
+
+            var extraRefs = GetList(segment, "extra_material_refs");
+            if (extraRefs == null || extraRefs.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var entry in extraRefs)
+            {
+                string refId = entry as string;
+                if (refId == null && entry is Dictionary<string, object> dict)
+                {
+                    refId = GetString(dict, "id");
+                }
+
+                if (string.IsNullOrWhiteSpace(refId))
+                {
+                    continue;
+                }
+
+                if (maskIndex.TryGetValue(refId, out var maskDefinition))
+                {
+                    var maskInstance = maskDefinition.Clone();
+                    maskInstance.SourceWidth = usage.SourceWidth;
+                    maskInstance.SourceHeight = usage.SourceHeight;
+                    maskInstance.SourceFrameRate = usage.FrameRate;
+                    usage.Mask = maskInstance;
+                    break;
+                }
+            }
+        }
+
         private static Dictionary<string, AudioFadeDefinition> BuildAudioFadeIndex(Dictionary<string, object> materials)
         {
             var index = new Dictionary<string, AudioFadeDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -356,6 +416,28 @@ namespace CapCutDataParser
                     FadeIn = fadeInDuration > 0 ? ToTimeSpan(fadeInDuration) : (TimeSpan?)null,
                     FadeOut = fadeOutDuration > 0 ? ToTimeSpan(fadeOutDuration) : (TimeSpan?)null
                 };
+            }
+
+            return index;
+        }
+
+        private static Dictionary<string, CapCutMaskData> BuildMaskIndex(Dictionary<string, object> materials)
+        {
+            var index = new Dictionary<string, CapCutMaskData>(StringComparer.OrdinalIgnoreCase);
+            if (materials == null)
+            {
+                return index;
+            }
+
+            foreach (var mask in EnumerateObjects(GetList(materials, "common_mask")))
+            {
+                var maskData = CapCutMaskData.FromDictionary(mask);
+                if (maskData == null || string.IsNullOrWhiteSpace(maskData.Id) || index.ContainsKey(maskData.Id))
+                {
+                    continue;
+                }
+
+                index[maskData.Id] = maskData;
             }
 
             return index;

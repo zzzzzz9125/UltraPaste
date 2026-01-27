@@ -1,4 +1,4 @@
-﻿#if !Sony
+#if !Sony
 using ScriptPortal.Vegas;
 #else
 using Sony.Vegas;
@@ -10,10 +10,9 @@ using System.Text;
 using Microsoft.Win32;
 using System.Collections.Generic;
 
-namespace UltraPaste.ExtensionMethods
+namespace UltraPaste.Utilities
 {
-    using Utilities;
-    internal static class PlugInExtensions
+    internal static class PlugInHelper
     {
         public static string FxPresetsPath = Path.Combine(VegasCommonHelper.VegasVersion > 13 ? Path.Combine(VegasCommonHelper.RoamingPath, "VEGAS", "FX Presets") : Path.Combine(VegasCommonHelper.RoamingPath, "Sony", "VEGAS", "FX Presets"));
         public static RegistryKey DxtReg = Registry.CurrentUser.CreateSubKey(Path.Combine("Software", "DXTransform", "Presets"));

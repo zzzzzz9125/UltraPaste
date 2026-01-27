@@ -1,17 +1,18 @@
-ï»¿#if !Sony
+#if !Sony
 using ScriptPortal.Vegas;
 #else
 using Sony.Vegas;
 #endif
 
 using System;
+using System.IO;
 using System.Linq;
 using CapCutDataParser;
 using System.Collections.Generic;
 
-namespace UltraPaste.ExtensionMethods
+namespace UltraPaste.Utilities
 {
-    internal static class CapCutDataExtensions
+    internal static class CapCutDataHelper
     {
         public static List<TrackEvent> GenerateEventsToVegas(this CapCutData data, ref Timecode start, bool closeGap, bool subtitlesOnly, out SubtitlesData subtitles)
         {
@@ -96,7 +97,7 @@ namespace UltraPaste.ExtensionMethods
                             }
                         }
                     }
-                    }
+                }
             }
 
             if (blocks != null)
@@ -188,13 +189,56 @@ namespace UltraPaste.ExtensionMethods
                 return null;
             }
 
-            if (cache.TryGetValue(path, out Media media))
+            string normalizedPath = NormalizePath(path);
+            Media media = TryGetOrLoadMedia(vegas, normalizedPath, cache);
+
+            if (media == null)
             {
-                return media;
+                string fallbackPath = TryResolveOnlineMaterialPath(normalizedPath);
+                if (!string.IsNullOrEmpty(fallbackPath))
+                {
+                    string normalizedFallback = NormalizePath(fallbackPath);
+                    media = TryGetOrLoadMedia(vegas, normalizedFallback, cache);
+                }
             }
 
-            media = vegas.GetValidMedia(path);
-            cache[path] = media;
+            return media;
+        }
+
+        private static Media TryGetOrLoadMedia(Vegas vegas, string normalizedPath, Dictionary<string, Media> cache)
+        {
+            if (vegas == null || string.IsNullOrWhiteSpace(normalizedPath))
+            {
+                return null;
+            }
+
+            if (cache.TryGetValue(normalizedPath, out Media cachedValue))
+            {
+                return cachedValue;
+            }
+
+            Media media = vegas.GetValidMedia(normalizedPath);
+            if (media == null)
+            {
+                if (CapCutMediaDecryptor.TryEnsureDecryptedMedia(normalizedPath, out string decryptedPath) && !string.IsNullOrEmpty(decryptedPath))
+                {
+                    string normalizedDecrypted = NormalizePath(decryptedPath);
+                    if (!cache.TryGetValue(normalizedDecrypted, out media))
+                    {
+                        media = vegas.GetValidMedia(normalizedDecrypted);
+                        if (media != null)
+                        {
+                            cache[normalizedDecrypted] = media;
+                        }
+                    }
+                }
+            }
+
+            if (media != null)
+            {
+                cache[normalizedPath] = media;
+            }
+
             return media;
         }
 
@@ -364,6 +408,57 @@ namespace UltraPaste.ExtensionMethods
             }
 
             return left.Start.CompareTo(right.Start);
+        }
+
+        private static string NormalizePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return path;
+            }
+
+            string normalized = path.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+            try
+            {
+                if (Path.IsPathRooted(normalized))
+                {
+                    normalized = Path.GetFullPath(normalized);
+                }
+            }
+            catch
+            {
+                // ignored ¨C fall back to best effort path
+            }
+
+            return normalized;
+        }
+
+        private static string TryResolveOnlineMaterialPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return null;
+            }
+
+            if (path.IndexOf("onlinematerial", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                return null;
+            }
+
+            string fileName = Path.GetFileName(path);
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return null;
+            }
+
+            string cacheFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CapCut", "User Data", "Cache", "onlineMaterial");
+            if (!Directory.Exists(cacheFolder))
+            {
+                return null;
+            }
+
+            string candidate = Path.Combine(cacheFolder, fileName);
+            return File.Exists(candidate) ? candidate : null;
         }
 
         private static IEnumerable<string> SplitTextLines(string text)

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace UltraPaste.UltraControls
 {
-    using ExtensionMethods;
+    using Utilities;
     internal partial class UltraTableLayoutPanel_SubtitlesImport : UltraTableLayoutPanel
     {
         public UltraTableLayoutPanel_SubtitlesImport(UltraPasteSettings.SubtitlesImportSettings settings, ContainerControl formControl, bool addOneClickGroup = true) : base(settings, formControl)

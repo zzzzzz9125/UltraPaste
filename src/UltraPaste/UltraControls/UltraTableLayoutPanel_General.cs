@@ -136,7 +136,7 @@ namespace UltraPaste.UltraControls
 
                 button.Click += (o, e) =>
                 {
-                    string link = I18n.Translation.Language == "zh" ? "https://afdian.tv/a/zzzzzz9125" : "https://ko-fi.com/zzzzzz9125";
+                    string link = I18n.Translation.Language == "zh" ? "https://afdian.com/a/zzzzzz9125" : "https://ko-fi.com/zzzzzz9125";
                     Process.Start(link);
                 };
 

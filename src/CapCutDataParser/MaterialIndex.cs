@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Globalization;
 using System.Collections.Generic;
-using static CapCutDataParser.CapCutJsonUtilities;
 
 namespace CapCutDataParser
 {
+    using static CapCutJsonUtilities;
     internal sealed class MaterialIndex
     {
         private readonly Dictionary<string, VideoMaterialInfo> videos;
@@ -24,36 +25,56 @@ namespace CapCutDataParser
             var videoIndex = new Dictionary<string, VideoMaterialInfo>(StringComparer.OrdinalIgnoreCase);
             foreach (var video in EnumerateObjects(GetList(materials, "videos")))
             {
-                var key = FirstNonEmpty(GetString(video, "material_id"), GetString(video, "id"), GetString(video, "local_material_id"));
-                if (string.IsNullOrWhiteSpace(key) || videoIndex.ContainsKey(key))
+                var aliases = new[]
+                {
+                    GetString(video, "id"),
+                    GetString(video, "material_id"),
+                    GetString(video, "local_material_id")
+                };
+
+                var info = new VideoMaterialInfo
+                {
+                    MaterialId = FirstNonEmpty(aliases),
+                    Name = GetString(video, "material_name"),
+                    Path = GetString(video, "path"),
+                    HasSoundSeparated = GetBool(video, "has_sound_separated", false),
+                    Width = (int)GetLong(video, "width"),
+                    Height = (int)GetLong(video, "height"),
+                    FrameRate = ParseFrameRate(video)
+                };
+
+                if (string.IsNullOrWhiteSpace(info.MaterialId))
                 {
                     continue;
                 }
 
-                videoIndex[key] = new VideoMaterialInfo
-                {
-                    MaterialId = key,
-                    Name = GetString(video, "material_name"),
-                    Path = GetString(video, "path"),
-                    HasSoundSeparated = GetBool(video, "has_sound_separated", false)
-                };
+                AddMaterialAliases(videoIndex, info, aliases);
             }
 
             var audioIndex = new Dictionary<string, AudioMaterialInfo>(StringComparer.OrdinalIgnoreCase);
             foreach (var audio in EnumerateObjects(GetList(materials, "audios")))
             {
-                var key = FirstNonEmpty(GetString(audio, "id"), GetString(audio, "local_material_id"), GetString(audio, "music_id"));
-                if (string.IsNullOrWhiteSpace(key) || audioIndex.ContainsKey(key))
+                var aliases = new[]
+                {
+                    GetString(audio, "id"),
+                    GetString(audio, "material_id"),
+                    GetString(audio, "local_material_id"),
+                    GetString(audio, "music_id")
+                };
+
+                var info = new AudioMaterialInfo
+                {
+                    MaterialId = FirstNonEmpty(aliases),
+                    Name = GetString(audio, "name"),
+                    Path = GetString(audio, "path")
+                };
+
+                if (string.IsNullOrWhiteSpace(info.MaterialId))
                 {
                     continue;
                 }
 
-                audioIndex[key] = new AudioMaterialInfo
-                {
-                    MaterialId = key,
-                    Name = GetString(audio, "name"),
-                    Path = GetString(audio, "path")
-                };
+                AddMaterialAliases(audioIndex, info, aliases);
             }
 
             var textIndex = new Dictionary<string, TextMaterialInfo>(StringComparer.OrdinalIgnoreCase);
@@ -111,12 +132,73 @@ namespace CapCutDataParser
             return null;
         }
 
+        private static void AddMaterialAliases<T>(Dictionary<string, T> index, T material, params string[] aliases)
+        {
+            if (index == null || material == null || aliases == null)
+            {
+                return;
+            }
+
+            foreach (var alias in aliases)
+            {
+                if (string.IsNullOrWhiteSpace(alias) || index.ContainsKey(alias))
+                {
+                    continue;
+                }
+
+                index[alias] = material;
+            }
+        }
+
+        private static double? ParseFrameRate(Dictionary<string, object> video)
+        {
+            double fps = GetDouble(video, "fps", 0d);
+            if (fps > 0)
+            {
+                return fps;
+            }
+
+            var fpsObject = GetObject(video, "fps");
+            if (fpsObject != null)
+            {
+                double numerator = GetDouble(fpsObject, "num", 0d);
+                double denominator = GetDouble(fpsObject, "den", 0d);
+                if (numerator > 0 && denominator > 0)
+                {
+                    return numerator / denominator;
+                }
+            }
+
+            string frameRateText = GetString(video, "frame_rate") ?? GetString(video, "frameRate");
+            if (!string.IsNullOrWhiteSpace(frameRateText))
+            {
+                if (frameRateText.Contains("/"))
+                {
+                    string[] parts = frameRateText.Split('/');
+                    if (parts.Length == 2 && double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double num) &&
+                        double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double den) && den != 0)
+                    {
+                        return num / den;
+                    }
+                }
+                else if (double.TryParse(frameRateText, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed) && parsed > 0)
+                {
+                    return parsed;
+                }
+            }
+
+            return null;
+        }
+
         internal sealed class VideoMaterialInfo
         {
             public string MaterialId { get; set; }
             public string Name { get; set; }
             public string Path { get; set; }
             public bool HasSoundSeparated { get; set; } = false;
+            public int Width { get; set; }
+            public int Height { get; set; }
+            public double? FrameRate { get; set; }
         }
 
         internal sealed class AudioMaterialInfo
