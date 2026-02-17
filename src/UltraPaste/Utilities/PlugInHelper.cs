@@ -9,12 +9,14 @@ using System.IO;
 using System.Text;
 using Microsoft.Win32;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace UltraPaste.Utilities
 {
+    using UltraPaste.Core;
     internal static class PlugInHelper
     {
-        public static string FxPresetsPath = Path.Combine(VegasCommonHelper.VegasVersion > 13 ? Path.Combine(VegasCommonHelper.RoamingPath, "VEGAS", "FX Presets") : Path.Combine(VegasCommonHelper.RoamingPath, "Sony", "VEGAS", "FX Presets"));
+        public static string FxPresetsPath = Path.Combine(VegasCommonHelper.VegasVersionInfo.FileMajorPart > 13 ? Path.Combine(VegasCommonHelper.RoamingPath, "VEGAS", "FX Presets") : Path.Combine(VegasCommonHelper.RoamingPath, "Sony", "VEGAS", "FX Presets"));
         public static RegistryKey DxtReg = Registry.CurrentUser.CreateSubKey(Path.Combine("Software", "DXTransform", "Presets"));
 
         public static void SaveDxtEffectPresetXml(this PlugInNode plugIn, string presetName, string xmlString)
@@ -145,6 +147,43 @@ namespace UltraPaste.Utilities
             }
         }
 
+        public static List<Effect> GetGenerators(List<VideoEvent> evs, bool ofxOnly = false, string[] whiteListUidStrs = null)
+        {
+            List<Effect> efs = new List<Effect>();
 
+            if (evs == null || evs.Count == 0)
+            {
+                return efs;
+            }
+
+            foreach (VideoEvent ev in evs)
+            {
+                if (ev.ActiveTake?.Media?.IsGenerated() == true && (!ofxOnly || ev.ActiveTake.Media.Generator.PlugIn.IsOFX))
+                {
+                    if (whiteListUidStrs == null || whiteListUidStrs.Length == 0 || whiteListUidStrs.Contains(ev.ActiveTake.Media.Generator.PlugIn.UniqueID))
+                    {
+                        efs.Add(ev.ActiveTake.Media.Generator);
+                    }
+                }
+            }
+
+            return efs;
+        }
+
+        public static List<OFXEffect> GetGeneratorOFXEffects(List<VideoEvent> evs, string[] whiteListUidStrs = null)
+        {
+            List<OFXEffect> ofxs = new List<OFXEffect>();
+
+            List<Effect> generators = GetGenerators(evs, true, whiteListUidStrs);
+
+            if (generators.Count == 0)
+            {
+                return ofxs;
+            }
+
+            ofxs = generators.Select(g => g.OFXEffect).ToList();
+
+            return ofxs;
+        }
     }
 }

@@ -7,11 +7,15 @@ using Sony.Vegas;
 using System;
 using System.IO;
 using System.Linq;
-using CapCutDataParser;
 using System.Collections.Generic;
+
+using CapCutDataParser.Models;
+using CapCutDataParser.Parsers;
 
 namespace UltraPaste.Utilities
 {
+    using UltraPaste.Core;
+    using UltraPaste.Models;
     internal static class CapCutDataHelper
     {
         public static List<TrackEvent> GenerateEventsToVegas(this CapCutData data, ref Timecode start, bool closeGap, bool subtitlesOnly, out SubtitlesData subtitles)

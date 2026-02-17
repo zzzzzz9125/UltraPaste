@@ -13,18 +13,20 @@ using Sony.MediaSoftware.TextGen.CoreGraphics.NodeLibrary.MetaText;
 #endif
 
 using System;
+using System.Xml;
 using System.Linq;
 using System.Text;
+using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace UltraPaste
 {
-    using System.Text.RegularExpressions;
-    using System.Xml;
-    using Utilities;
-    public static class TextMediaGeneratorHelper
+    using UltraPaste.Core;
+    using UltraPaste.Utilities;
+    internal static class TextMediaGeneratorHelper
     {
         public const string UID_TITLES_AND_TEXT = "{Svfx:com.vegascreativesoftware:titlesandtext}";
         public const string UID_TITLES_AND_TEXT_SONY = "{Svfx:com.sonycreativesoftware:titlesandtext}";
@@ -38,6 +40,7 @@ namespace UltraPaste
         public const string UID_UNIVERSE_TEXT_TYPOGRAPHIC = "{Svfx:com.redgiantsoftware.Universe_Text_Typographic_OFX}";
         public const string UID_UNIVERSE_TEXT_HACKER = "{Svfx:com.redgiantsoftware.Universe_Text_Hacker_Text_OFX}";
         public const string UID_OFX_CLOCK = "{Svfx:de.hlinke.ofxclock}";
+        public const string UID_TEXTULER = "{Svfx:us.co.misc.Textuler}";
         public static PlugInNode PlugInTitlesAndText = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_TITLES_AND_TEXT) ?? UltraPasteCommon.Vegas.Generators.FindChildByUniqueID(UID_TITLES_AND_TEXT_SONY);
         public static PlugInNode PlugInProTypeTitler = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_PROTYPE_TITLER);
         public static PlugInNode PlugInLegacyText = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_LEGACY_TEXT);
@@ -48,7 +51,8 @@ namespace UltraPaste
         public static PlugInNode PlugInUniverseTextTypographic = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_UNIVERSE_TEXT_TYPOGRAPHIC);
         public static PlugInNode PlugInUniverseTextHacker = UltraPasteCommon.Vegas?.VideoFX.FindChildByUniqueID(UID_UNIVERSE_TEXT_HACKER);
         public static PlugInNode PlugInOfxClock = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_OFX_CLOCK);
-        public static PlugInNode[] TextPlugIns = new PlugInNode[] { PlugInTitlesAndText, PlugInProTypeTitler, PlugInLegacyText, PlugInTextOfx, PlugInIgniteProText, PlugInIgniteProText360, PlugInUniverseTextTypographic, PlugInUniverseTextHacker, PlugInOfxClock };
+        public static PlugInNode PlugInTextuler = UltraPasteCommon.Vegas?.Generators.FindChildByUniqueID(UID_TEXTULER);
+        public static PlugInNode[] TextPlugIns = new PlugInNode[] { PlugInTitlesAndText, PlugInProTypeTitler, PlugInLegacyText, PlugInTextOfx, PlugInIgniteProText, PlugInIgniteProText360, PlugInUniverseTextTypographic, PlugInUniverseTextHacker, PlugInOfxClock, PlugInTextuler };
         public static Dictionary<int, string> ValidTextNumbersAndNames
         {
             get
@@ -93,6 +97,11 @@ namespace UltraPaste
             public double ShadowY = 0.2;
             public double ShadowBlur = 0.4;
 
+            /// <summary>
+            /// Creates a property snapshot from a Titles and Text OFX effect.
+            /// </summary>
+            /// <param name="ofx">The source OFX effect.</param>
+            /// <returns>A populated <see cref="TextMediaProperties"/> instance.</returns>
             public static TextMediaProperties GetFromTitlesAndText(OFXEffect ofx)
             {
                 RichTextBox rtb = new RichTextBox() { Rtf = ((OFXStringParameter)ofx["Text"]).Value };
@@ -125,8 +134,14 @@ namespace UltraPaste
                 };
             }
 
+            /// <summary>
+            /// Builds a titler instance, optionally applying a preset.
+            /// </summary>
+            /// <param name="preset">The preset name to apply.</param>
+            /// <returns>A configured <see cref="Titler"/> instance.</returns>
             public Titler GetTitler(string preset = null)
             {
+                // Apply the preset then ensure at least one valid text span exists.
                 Titler titler = new Titler(GetMetaTextNode());
 
                 string presetXml = Encoding.UTF8.GetString(PlugInProTypeTitler.LoadDxtEffectPreset(preset));
@@ -143,30 +158,15 @@ namespace UltraPaste
                 }
                 titler = titlerPreset;
 
-                if (titler.MetaTextNodes.Count == 0)
-                {
-                    titler.MetaTextNodes.Add(GetMetaTextNode());
-                }
-                else if (titler.MetaTextNodes[0] == null)
-                {
-                    titler.MetaTextNodes[0] = GetMetaTextNode();
-                }
-                else if (titler.MetaTextNodes[0].TextSource.Spans.Count == 0)
-                {
-                    titler.MetaTextNodes[0].TextSource.Spans.Add(GetMetaTextSpan());
-                }
-                else if (titler.MetaTextNodes[0].TextSource.Spans[0] == null)
-                {
-                    titler.MetaTextNodes[0].TextSource.Spans[0] = GetMetaTextSpan();
-                }
-                else
-                {
-                    titler.MetaTextNodes[0].TextSource.Spans[0].Text = Text;
-                }
+                EnsureTitlerMetaTextNode(titler, this);
 
                 return titler;
             }
 
+            /// <summary>
+            /// Creates a MetaText node using current property values.
+            /// </summary>
+            /// <returns>The configured <see cref="MetaTextNode"/> instance.</returns>
             public MetaTextNode GetMetaTextNode()
             {
                 MetaTextNode node = new MetaTextNode(new MetaTextSource(GetMetaTextSpan()))
@@ -193,6 +193,10 @@ namespace UltraPaste
                 return node;
             }
 
+            /// <summary>
+            /// Creates a MetaText span using current property values.
+            /// </summary>
+            /// <returns>The configured <see cref="MetaTextSpan"/> instance.</returns>
             public MetaTextSpan GetMetaTextSpan()
             {
                 MetaTextSpanProperties spanProperties = new MetaTextSpanProperties
@@ -216,11 +220,17 @@ namespace UltraPaste
                 return span;
             }
 
+            /// <summary>
+            /// Generates a media instance using the ProType Titler generator.
+            /// </summary>
+            /// <param name="presetName">Optional preset name to apply.</param>
+            /// <param name="changer">Optional mutator for the titler model.</param>
+            /// <returns>The generated media instance.</returns>
             public Media GenerateProTypeTitlerMedia(string presetName = null, TitlerChanger changer = null)
             {
                 Titler titler = GetTitler(presetName);
                 changer?.Invoke(titler);
-                string tmpPresetName = string.Format("{0}_Temp", presetName);
+                string tmpPresetName = BuildTempPresetName(presetName);
                 PlugInProTypeTitler.SaveDxtEffectPresetXml(tmpPresetName, titler.SerializeXml());
                 Media myMedia = Media.CreateInstance(UltraPasteCommon.Vegas.Project, PlugInProTypeTitler);
                 myMedia.Generator.Preset = tmpPresetName;
@@ -234,6 +244,11 @@ namespace UltraPaste
             }
         }
 
+        /// <summary>
+        /// Deserializes a titler XML string and repairs node lists to match text spans.
+        /// </summary>
+        /// <param name="str">The serialized titler XML.</param>
+        /// <returns>The deserialized <see cref="Titler"/> instance, or null.</returns>
         private static Titler DeserializeTitlerXml(string str)
         {
             if (string.IsNullOrEmpty(str))
@@ -325,8 +340,13 @@ namespace UltraPaste
             return t;
         }
 
-        // Note: Don't merge all of "AddOrGetSubNode()" using the generic type ("where T : MetaTextSubNode")!
-        // Constraining the generic type to "MetaTextSubNode" will cause compatibility issues with other versions of VEGAS Pro.
+        /// <summary>
+        /// Retrieves an existing line node for the character index or creates a new one.
+        /// </summary>
+        /// <param name="list1">The target list to populate.</param>
+        /// <param name="charIndex">The source character index.</param>
+        /// <param name="list2">Optional list to reuse node instances.</param>
+        /// <returns>The resolved <see cref="MetaTextLineNode"/> instance.</returns>
         private static MetaTextLineNode AddOrGetSubNode(this List<MetaTextLineNode> list1, int charIndex, List<MetaTextLineNode> list2 = null)
         {
             foreach (MetaTextLineNode node in list1)
@@ -353,6 +373,13 @@ namespace UltraPaste
             return current;
         }
 
+        /// <summary>
+        /// Retrieves an existing word node for the character index or creates a new one.
+        /// </summary>
+        /// <param name="list1">The target list to populate.</param>
+        /// <param name="charIndex">The source character index.</param>
+        /// <param name="list2">Optional list to reuse node instances.</param>
+        /// <returns>The resolved <see cref="MetaTextWordNode"/> instance.</returns>
         private static MetaTextWordNode AddOrGetSubNode(this List<MetaTextWordNode> list1, int charIndex, List<MetaTextWordNode> list2 = null)
         {
             foreach (MetaTextWordNode node in list1)
@@ -379,6 +406,13 @@ namespace UltraPaste
             return current;
         }
 
+        /// <summary>
+        /// Retrieves an existing character node for the character index or creates a new one.
+        /// </summary>
+        /// <param name="list1">The target list to populate.</param>
+        /// <param name="charIndex">The source character index.</param>
+        /// <param name="list2">Optional list to reuse node instances.</param>
+        /// <returns>The resolved <see cref="MetaTextCharacterNode"/> instance.</returns>
         private static MetaTextCharacterNode AddOrGetSubNode(this List<MetaTextCharacterNode> list1, int charIndex, List<MetaTextCharacterNode> list2 = null)
         {
             foreach (MetaTextCharacterNode node in list1)
@@ -405,6 +439,17 @@ namespace UltraPaste
             return current;
         }
 
+        /// <summary>
+        /// Generates text events for the selected text generator type.
+        /// </summary>
+        /// <param name="start">The start time.</param>
+        /// <param name="length">The event length.</param>
+        /// <param name="text">The text content.</param>
+        /// <param name="type">The generator index.</param>
+        /// <param name="presetName">Optional preset name.</param>
+        /// <param name="useMultipleSelectedTracks">Whether to target multiple selected tracks.</param>
+        /// <param name="newTrackIndex">Optional new track index.</param>
+        /// <returns>The generated video events.</returns>
         public static List<VideoEvent> GenerateTextEvents(Timecode start, Timecode length = null, string text = null, int type = 0, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
         {
             List<VideoEvent> evs = new List<VideoEvent>();
@@ -447,12 +492,23 @@ namespace UltraPaste
             {
                 if (evs[i]?.ActiveTake != null)
                 {
-                    evs[i].ActiveTake.Name = string.Format("{0} {1}", text, i+1);
+                    evs[i].ActiveTake.Name = string.Format("{0} {1}", text, i + 1);
                 }
             }
             return evs;
         }
 
+        /// <summary>
+        /// Generates events using the ProType Titler generator.
+        /// </summary>
+        /// <param name="start">The start time.</param>
+        /// <param name="length">The event length.</param>
+        /// <param name="text">The text content.</param>
+        /// <param name="presetName">Optional preset name.</param>
+        /// <param name="useMultipleSelectedTracks">Whether to target multiple selected tracks.</param>
+        /// <param name="newTrackIndex">Optional new track index.</param>
+        /// <param name="changer">Optional mutator for the titler model.</param>
+        /// <returns>The generated video events.</returns>
         private static List<VideoEvent> GenerateProTypeTitlerEvents(Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1, TitlerChanger changer = null)
         {
             TextMediaProperties properties = new TextMediaProperties()
@@ -463,33 +519,16 @@ namespace UltraPaste
             return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(properties.GenerateProTypeTitlerMedia(presetName, changer), start, length, useMultipleSelectedTracks, newTrackIndex);
         }
 
-        private static readonly byte[] LegacyTextDefaultData = CreateLegacyTextDefaultData();
-
-        private static byte[] CreateLegacyTextDefaultData()
-        {
-            return new byte[] {
-                0x00, 0x00, 0x00, 0x00, 0x0B, 0x00, 0x00, 0x00, 0xC8, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0, 0x3F, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x8F, 0xC2, 0xF5, 0x3C,
-                0x8F, 0xC2, 0xF5, 0x3C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0xCD, 0xCC, 0x4C, 0x3E, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
-                0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
-                0xCD, 0xCC, 0x4C, 0x3D, 0xCD, 0xCC, 0xCC, 0x3D, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0x5D, 0x74, 0xD1, 0x45, 0x17, 0xED, 0x3F, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x85, 0x00, 0x00, 0x00, 0x7B, 0x5C, 0x72, 0x74, 0x66, 0x31, 0x5C, 0x61, 0x6E, 0x73, 0x69, 0x5C, 0x61, 0x6E, 0x73, 0x69, 0x63, 0x70, 0x67, 0x31,
-                0x32, 0x35, 0x32, 0x5C, 0x64, 0x65, 0x66, 0x66, 0x30, 0x5C, 0x64, 0x65, 0x66, 0x6C, 0x61, 0x6E, 0x67, 0x31, 0x30, 0x33, 0x33, 0x7B, 0x5C, 0x66, 0x6F, 0x6E, 0x74, 0x74, 0x62, 0x6C, 0x7B, 0x5C,
-                0x66, 0x30, 0x5C, 0x66, 0x6E, 0x69, 0x6C, 0x5C, 0x66, 0x63, 0x68, 0x61, 0x72, 0x73, 0x65, 0x74, 0x30, 0x20, 0x41, 0x72, 0x69, 0x61, 0x6C, 0x3B, 0x7D, 0x7D, 0x0A, 0x5C, 0x76, 0x69, 0x65, 0x77,
-                0x6B, 0x69, 0x6E, 0x64, 0x34, 0x5C, 0x75, 0x63, 0x31, 0x5C, 0x70, 0x61, 0x72, 0x64, 0x5C, 0x71, 0x63, 0x5C, 0x62, 0x5C, 0x66, 0x73, 0x31, 0x34, 0x34, 0x20, 0x53, 0x61, 0x6D, 0x70, 0x6C, 0x65,
-                0x5C, 0x70, 0x61, 0x72, 0x0A, 0x54, 0x65, 0x78, 0x74, 0x5C, 0x70, 0x61, 0x72, 0x0A, 0x7D, 0x0A, 0x00};
-
-        }
-
+        /// <summary>
+        /// Generates events using the legacy text generator.
+        /// </summary>
+        /// <param name="start">The start time.</param>
+        /// <param name="length">The event length.</param>
+        /// <param name="text">The text content.</param>
+        /// <param name="presetName">Optional preset name.</param>
+        /// <param name="useMultipleSelectedTracks">Whether to target multiple selected tracks.</param>
+        /// <param name="newTrackIndex">Optional new track index.</param>
+        /// <returns>The generated video events.</returns>
         private static List<VideoEvent> GenerateLegacyTextEvents(Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
         {
             if (PlugInLegacyText == null)
@@ -498,25 +537,10 @@ namespace UltraPaste
             }
 
             byte[] data = PlugInLegacyText.LoadDxtEffectPreset(presetName);
-            int textStart = -1, textEnd = -1;
+            int textStart;
+            int textEnd;
 
-            if (data != null)
-            {
-                for (int i = 0; i < data.Length; i++)
-                {
-                    if (data[i] == 0x70) // "}"
-                    {
-                        textEnd = i;
-                    }
-                    else if (textStart < 0 && data[i] == 0x7B) // "{"
-                    {
-                        textStart = i;
-                    }
-                }
-            }
-
-
-            if (data == null || textStart < 4 || textEnd < textStart)
+            if (!TryFindLegacyTextRange(data, out textStart, out textEnd))
             {
                 data = LegacyTextDefaultData.ToArray();
                 textStart = 0x1CC;
@@ -545,7 +569,7 @@ namespace UltraPaste
 
             data = l.ToArray();
 
-            string tempPresetName = string.Format("{0}_Temp", presetName);
+            string tempPresetName = BuildTempPresetName(presetName);
             PlugInLegacyText.SaveDxtEffectPreset(tempPresetName, data);
             Media media = Media.CreateInstance(UltraPasteCommon.Vegas.Project, PlugInLegacyText);
             media.Generator.Preset = tempPresetName;
@@ -559,6 +583,17 @@ namespace UltraPaste
             return UltraPasteCommon.Vegas.Project.GenerateEvents<VideoEvent>(media, start, length, useMultipleSelectedTracks, newTrackIndex);
         }
 
+        /// <summary>
+        /// Generates events using an OFX generator or video effect plug-in.
+        /// </summary>
+        /// <param name="plug">The plug-in node to use.</param>
+        /// <param name="start">The start time.</param>
+        /// <param name="length">The event length.</param>
+        /// <param name="text">The text content.</param>
+        /// <param name="presetName">Optional preset name.</param>
+        /// <param name="useMultipleSelectedTracks">Whether to target multiple selected tracks.</param>
+        /// <param name="newTrackIndex">Optional new track index.</param>
+        /// <returns>The generated video events.</returns>
         private static List<VideoEvent> GenerateOfxEvents(PlugInNode plug, Timecode start, Timecode length = null, string text = null, string presetName = null, bool useMultipleSelectedTracks = false, int newTrackIndex = -1)
         {
             if (plug == null)
@@ -576,7 +611,7 @@ namespace UltraPaste
                 {
                     media.Length = length;
                 }
-                SetTextStringParameters(media.Generator, text);
+                SetTextToTextStringParameters(media.Generator, text);
 
                 if (plug.UniqueID == PlugInTextOfx?.UniqueID)
                 {
@@ -629,7 +664,7 @@ namespace UltraPaste
                     {
                         ef.Preset = presetName;
                     }
-                    SetTextStringParameters(ef, text);
+                    SetTextToTextStringParameters(ef, text);
                     string name = string.Format("{0} {1}", ef.PlugIn.Name, i++);
                     vEvent.Name = name;
                     foreach (Take t in vEvent.Takes)
@@ -641,8 +676,11 @@ namespace UltraPaste
             }
         }
 
-
-
+        /// <summary>
+        /// Gets OFX string parameters that represent text in a given effect.
+        /// </summary>
+        /// <param name="ef">The effect to inspect.</param>
+        /// <returns>The list of matching string parameters.</returns>
         private static List<OFXStringParameter> GetTextStringParameters(Effect ef)
         {
             List<OFXStringParameter> ofxStrings = new List<OFXStringParameter>();
@@ -657,7 +695,7 @@ namespace UltraPaste
             }
             else
             {
-                string[] paraNames = ef.PlugIn.UniqueID == PlugInUniverseTextTypographic?.UniqueID ? new string[] { "68", "116" } : ef.PlugIn.UniqueID == PlugInUniverseTextHacker?.UniqueID ? new string[] { "0", "1" } : ef.PlugIn.UniqueID == PlugInOfxClock?.UniqueID ? new string[] { "Dig Clock Free Format" } : new string[0];
+                string[] paraNames = ef.PlugIn.UniqueID == PlugInUniverseTextTypographic?.UniqueID ? new string[] { "68", "116" } : ef.PlugIn.UniqueID == PlugInUniverseTextHacker?.UniqueID ? new string[] { "0", "1" } : ef.PlugIn.UniqueID == PlugInOfxClock?.UniqueID ? new string[] { "Dig Clock Free Format" } : ef.PlugIn.UniqueID == PlugInTextuler?.UniqueID ? new string[] { "textMessage" } : new string[0];
                 foreach (string paraName in paraNames)
                 {
                     OFXStringParameter p;
@@ -670,7 +708,14 @@ namespace UltraPaste
             return ofxStrings;
         }
 
-        private static void SetTextStringParameters(Effect ef, string text)
+        /// <summary>
+        /// Sets text values on OFX string parameters.
+        /// </summary>
+        /// <param name="ef">The effect to update.</param>
+        /// <param name="text">The text content.</param>
+        /// <param name="type">The text format type.</param>
+        /// <param name="richTextFormatOnly">Whether to keep existing text and only apply formatting.</param>
+        private static void SetTextToTextStringParameters(Effect ef, string text, TextStringType type = TextStringType.PlainText, bool richTextFormatOnly = false)
         {
             if (text == null)
             {
@@ -684,34 +729,109 @@ namespace UltraPaste
                 return;
             }
 
-            if (ef.PlugIn.UniqueID == PlugInTitlesAndText.UniqueID)
+            using (RichTextBox rtb = new RichTextBox())
             {
-                foreach (OFXStringParameter ofxString in ofxStrings)
+                string pureText = text;
+                if (type == TextStringType.RichText)
                 {
-                    ofxString.Value = new RichTextBox { Rtf = ofxString.Value, Text = text }.Rtf;
+                    rtb.Rtf = text;
+                    pureText = rtb.Text;
                 }
-            }
-            else
-            {
-                string[] strs = text.Split(new[] { "\n", "\r\n" }, StringSplitOptions.None);
 
-                int count = Math.Min(ofxStrings.Count, strs.Length);
-
-                for (int i = 0; i < count; i++)
+                if (ef.PlugIn.UniqueID == PlugInTitlesAndText?.UniqueID)
                 {
-                    if (i == count - 1 && strs.Length > ofxStrings.Count)
+                    foreach (OFXStringParameter ofxString in ofxStrings)
                     {
-                        ofxStrings[i].Value = string.Join("\n", strs);
+                        if (type == TextStringType.PlainText)
+                        {
+                            rtb.Rtf = ofxString.Value;
+                            rtb.Text = pureText;
+                            ofxString.Value = rtb.Rtf;
+                            continue;
+                        }
+
+                        if (!richTextFormatOnly)
+                        {
+                            ofxString.Value = text;
+                            continue;
+                        }
+
+                        rtb.Rtf = ofxString.Value;
+                        pureText = rtb.Text;
+                        rtb.Rtf = text;
+                        rtb.Text = pureText;
+                        ofxString.Value = rtb.Rtf;
                     }
-                    else
+                }
+                else
+                {
+                    string[] strs = pureText.Split(new[] { "\n", "\r\n" }, StringSplitOptions.None);
+
+                    int count = Math.Min(ofxStrings.Count, strs.Length);
+
+                    for (int i = 0; i < count; i++)
                     {
-                        ofxStrings[i].Value = strs[i];
-                        strs[i] = string.Empty;
+                        if (i == count - 1 && strs.Length > ofxStrings.Count)
+                        {
+                            ofxStrings[i].Value = string.Join("\n", strs);
+                        }
+                        else
+                        {
+                            ofxStrings[i].Value = strs[i];
+                            strs[i] = string.Empty;
+                        }
                     }
                 }
             }
         }
 
+        /// <summary>
+        /// Reads text values from OFX string parameters.
+        /// </summary>
+        /// <param name="ef">The effect to inspect.</param>
+        /// <param name="type">The text format type.</param>
+        /// <returns>The extracted text values.</returns>
+        private static List<string> GetTextFromTextStringParameters(Effect ef, TextStringType type = TextStringType.PlainText)
+        {
+            List<string> strs = new List<string>();
+
+            List<OFXStringParameter> ofxStrings = GetTextStringParameters(ef);
+
+            if (ofxStrings.Count == 0)
+            {
+                return strs;
+            }
+
+
+            using (RichTextBox rtb = new RichTextBox())
+            {
+                if (ef.PlugIn.UniqueID == PlugInTitlesAndText?.UniqueID)
+                {
+                    foreach (OFXStringParameter ofxString in ofxStrings)
+                    {
+                        string text = ofxString.Value;
+                        if (type == TextStringType.PlainText)
+                        {
+                            rtb.Rtf = ofxString.Value;
+                            text = rtb.Text;
+                        }
+                        strs.Add(text);
+                    }
+                }
+                else
+                {
+                    
+                }
+            }
+
+            return strs;
+        }
+
+        /// <summary>
+        /// Applies a preset while keeping existing text values.
+        /// </summary>
+        /// <param name="ef">The effect to update.</param>
+        /// <param name="preset">The preset name.</param>
         public static void SetTextPreset(Effect ef, string preset)
         {
             if (preset == null)
@@ -733,6 +853,158 @@ namespace UltraPaste
             for (int i = 0; i < ofxStrings.Count; i++)
             {
                 ofxStrings[i].Value = ef.PlugIn.UniqueID == PlugInTitlesAndText?.UniqueID ? new RichTextBox { Rtf = ofxStrings[i].Value, Text = new RichTextBox { Rtf = strs[i] }.Text }.Rtf : strs[i];
+            }
+        }
+
+        /// <summary>
+        /// Applies rich text to all relevant events.
+        /// </summary>
+        /// <param name="evs">The events to update.</param>
+        /// <param name="richText">The rich text content.</param>
+        /// <param name="richTextFormatOnly">Whether to apply only formatting.</param>
+        public static void SetRichTextToEvents(List<VideoEvent> evs, string richText, bool richTextFormatOnly = false)
+        {
+            List<Effect> efs = PlugInHelper.GetGenerators(evs, true, new string[] { PlugInTitlesAndText?.UniqueID });
+
+            if (efs.Count == 0)
+            {
+                return;
+            }
+
+            foreach (Effect ef in efs)
+            {
+                SetTextToTextStringParameters(ef, richText, TextStringType.RichText, richTextFormatOnly);
+            }
+        }
+
+        /// <summary>
+        /// Gets rich text values from the provided events.
+        /// </summary>
+        /// <param name="ev">The events to inspect.</param>
+        /// <returns>The collected rich text strings.</returns>
+        public static List<string> GetRichTextFromEvent(List<VideoEvent> ev)
+        {
+            List<string> strs = new List<string>();
+
+            List<Effect> efs = PlugInHelper.GetGenerators(ev, true, new string[] { PlugInTitlesAndText?.UniqueID });
+
+            if (efs.Count == 0)
+            {
+                return strs;
+            }
+
+            foreach (Effect ef in efs)
+            {
+                strs.AddRange(GetTextFromTextStringParameters(ef, TextStringType.RichText));
+            }
+
+            return strs;
+        }
+
+        public enum TextStringType
+        {
+            PlainText,
+            RichText
+        }
+
+        /// <summary>
+        /// Builds a temporary preset name for generator operations.
+        /// </summary>
+        /// <param name="presetName">The base preset name.</param>
+        /// <returns>The temporary preset name.</returns>
+        private static string BuildTempPresetName(string presetName)
+        {
+            return string.Format("{0}_Temp", presetName);
+        }
+
+        /// <summary>
+        /// Ensures the titler has a valid meta text node and span to update.
+        /// </summary>
+        /// <param name="titler">The titler instance to update.</param>
+        /// <param name="properties">The source properties.</param>
+        private static void EnsureTitlerMetaTextNode(Titler titler, TextMediaProperties properties)
+        {
+            if (titler.MetaTextNodes.Count == 0)
+            {
+                titler.MetaTextNodes.Add(properties.GetMetaTextNode());
+                return;
+            }
+
+            if (titler.MetaTextNodes[0] == null)
+            {
+                titler.MetaTextNodes[0] = properties.GetMetaTextNode();
+                return;
+            }
+
+            if (titler.MetaTextNodes[0].TextSource.Spans.Count == 0)
+            {
+                titler.MetaTextNodes[0].TextSource.Spans.Add(properties.GetMetaTextSpan());
+                return;
+            }
+
+            if (titler.MetaTextNodes[0].TextSource.Spans[0] == null)
+            {
+                titler.MetaTextNodes[0].TextSource.Spans[0] = properties.GetMetaTextSpan();
+                return;
+            }
+
+            titler.MetaTextNodes[0].TextSource.Spans[0].Text = properties.Text;
+        }
+
+        /// <summary>
+        /// Finds the RTF payload range inside legacy text preset data.
+        /// </summary>
+        /// <param name="data">The preset data.</param>
+        /// <param name="textStart">The detected start index.</param>
+        /// <param name="textEnd">The detected end index.</param>
+        /// <returns>True when a valid range is found.</returns>
+        private static bool TryFindLegacyTextRange(byte[] data, out int textStart, out int textEnd)
+        {
+            textStart = -1;
+            textEnd = -1;
+
+            if (data == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < data.Length; i++)
+            {
+                if (data[i] == 0x70) // "}"
+
+                {
+                    textEnd = i;
+                }
+                else if (textStart < 0 && data[i] == 0x7B) // "{"
+                {
+                    textStart = i;
+                }
+            }
+            return textStart >= 4 && textEnd >= textStart;
+        }
+
+        private static readonly byte[] LegacyTextDefaultData = LoadLegacyTextDefaultData();
+
+        /// <summary>
+        /// Loads the legacy text preset template from the embedded resource.
+        /// </summary>
+        /// <returns>The raw template bytes, or an empty array when unavailable.</returns>
+        private static byte[] LoadLegacyTextDefaultData()
+        {
+            const string resourceName = "UltraPaste.Resources.Templates.LegacyText.bin";
+            var assembly = typeof(TextMediaGeneratorHelper).Assembly;
+            using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+            {
+                if (stream == null)
+                {
+                    return new byte[0];
+                }
+
+                using (var memory = new MemoryStream())
+                {
+                    stream.CopyTo(memory);
+                    return memory.ToArray();
+                }
             }
         }
     }

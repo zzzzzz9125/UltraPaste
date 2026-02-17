@@ -35,15 +35,15 @@
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CapCutData.cs" />
+    <Compile Include="Models\CapCutData.cs" />
     <Compile Include="CapCutJsonUtilities.cs" />
-    <Compile Include="CapCutMaskData.cs" />
-    <Compile Include="CapCutMediaDecryptor.cs" />
-    <Compile Include="CapCutMediaType.cs" />
-    <Compile Include="CapCutMediaUsage.cs" />
-    <Compile Include="CapCutSubtitleBlock.cs" />
-    <Compile Include="JsonParser.cs" />
-    <Compile Include="MaterialIndex.cs" />
+    <Compile Include="Models\CapCutMaskData.cs" />
+    <Compile Include="Parsers\CapCutMediaDecryptor.cs" />
+    <Compile Include="Models\CapCutMediaType.cs" />
+    <Compile Include="Models\CapCutMediaUsage.cs" />
+    <Compile Include="Models\CapCutSubtitleBlock.cs" />
+    <Compile Include="Parsers\JsonParser.cs" />
+    <Compile Include="Models\MaterialIndex.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup />

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\..\packages\ILRepack.2.0.44\build\ILRepack.props" Condition="Exists('..\..\packages\ILRepack.2.0.44\build\ILRepack.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -31,7 +32,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE;MAGIX Test</DefineConstants>
+    <DefineConstants>TRACE;MAGIX TEST</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
@@ -45,15 +46,18 @@
     <Reference Include="CorePrimitives">
       <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\CorePrimitives.dll</HintPath>
     </Reference>
+    <Reference Include="Melanchall.DryWetMidi, Version=8.0.3.0, Culture=neutral, PublicKeyToken=83d0ffad275219ad, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Melanchall.DryWetMidi.8.0.3\lib\net45\Melanchall.DryWetMidi.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="ScriptPortal.MediaSoftware.Skins, Version=22.0.0.239, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
+    <Reference Include="ScriptPortal.MediaSoftware.Skins, Version=22.0.0.250, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\ScriptPortal.MediaSoftware.Skins.dll</HintPath>
     </Reference>
     <Reference Include="ScriptPortal.MediaSoftware.TextGen.CoreGraphics">
       <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\ScriptPortal.MediaSoftware.TextGen.CoreGraphics.dll</HintPath>
     </Reference>
-    <Reference Include="ScriptPortal.Vegas, Version=22.0.0.239, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
+    <Reference Include="ScriptPortal.Vegas, Version=22.0.0.250, Culture=neutral, PublicKeyToken=3cda94b1926e6fbc, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files\VEGAS\VEGAS Pro 22.0\ScriptPortal.Vegas.dll</HintPath>
     </Reference>
@@ -68,72 +72,89 @@
       <HintPath>C:\Program Files\Sony\Vegas Pro 13.0\Sony.Vegas.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
+    <Reference Include="WindowsInput, Version=1.0.4.0, Culture=neutral, PublicKeyToken=9b287f7dc5073cad, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\InputSimulator.1.0.4.0\lib\net20\WindowsInput.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="UltraControls\UltraOneClickGroupBox.cs">
+    <Compile Include="UI\Controls\UltraOneClickGroupBox.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTabControl.cs">
+    <Compile Include="UI\Controls\UltraTabControl.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTableLayoutPanel_ClipboardImage.cs">
+    <Compile Include="UI\Controls\Panels\UltraTableLayoutPanel_ClipboardImage.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTableLayoutPanel.cs">
+    <Compile Include="UI\Controls\UltraTableLayoutPanel.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTableLayoutPanel_General.cs">
+    <Compile Include="UI\Controls\Panels\UltraTableLayoutPanel_General.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTableLayoutPanel_MediaImport.cs">
+    <Compile Include="UI\Controls\Panels\UltraTableLayoutPanel_MediaImport.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTableLayoutPanel_PsdImport.cs">
+    <Compile Include="UI\Controls\Panels\UltraTableLayoutPanel_PsdImport.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTableLayoutPanel_CapCutData.cs">
+    <Compile Include="UI\Controls\Panels\UltraTableLayoutPanel_CapCutData.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTableLayoutPanel_ReaperData.cs">
+    <Compile Include="UI\Controls\Panels\UltraTableLayoutPanel_ReaperData.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTableLayoutPanel_SubtitlesImport.cs">
+    <Compile Include="UI\Controls\Panels\UltraTableLayoutPanel_SubtitlesImport.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTableLayoutPanel_SubtitlesInput.cs">
+    <Compile Include="UI\Controls\Panels\UltraTableLayoutPanel_SubtitlesEdit.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTableLayoutPanel_VegasData.cs">
+    <Compile Include="UI\Controls\Panels\UltraTableLayoutPanel_SubtitlesInput.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UltraControls\UltraTabPage.cs">
+    <Compile Include="UI\Controls\Panels\UltraTableLayoutPanel_VegasData.cs">
       <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UI\Controls\UltraTabPage.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UI\Windows\UltraWindow_SubtitlesEdit.cs">
+      <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Utilities\CapCutDataHelper.cs" />
+    <Compile Include="Utilities\MediaDownloadHelper.cs" />
     <Compile Include="Utilities\PlugInHelper.cs" />
     <Compile Include="Utilities\TrackEventHelper.cs" />
+    <Compile Include="Models\VegasClipboardData.cs" />
+    <Compile Include="Utilities\VegasClipboardDataHelper.cs" />
     <Compile Include="Utilities\VegasCommonHelper.cs" />
     <Compile Include="Utilities\ImageDataHelper.cs" />
     <Compile Include="Utilities\ImageSequenceHelper.cs" />
-    <Compile Include="UltraControls\UltraWindow_SubtitlesInput.cs">
+    <Compile Include="UI\Windows\UltraWindow_SubtitlesInput.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Utilities\ReaperDataHelper.cs" />
-    <Compile Include="VirtualKeyboard.cs" />
-    <Compile Include="I18n.cs" />
-    <Compile Include="SubtitlesData.cs" />
+    <Compile Include="Utilities\VegasFxPackagesHelper.cs" />
+    <Compile Include="Utilities\YtpmvTriggerHelper.cs" />
+    <Compile Include="Localization\I18n.cs" />
+    <Compile Include="Models\SubtitlesData.cs" />
     <Compile Include="Utilities\TextMediaGeneratorHelper.cs" />
-    <Compile Include="UltraControls\UltraWindow_Main.cs">
+    <Compile Include="UI\Windows\UltraWindow_Main.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="UltraPasteCommand.cs" />
-    <Compile Include="UltraPasteCommon.cs" />
-    <Compile Include="UltraPasteCommandModule.cs" />
+    <Compile Include="Core\UltraPasteCommand.cs" />
+    <Compile Include="Core\UltraPasteCommon.cs" />
+    <Compile Include="Core\UltraPasteCommandModule.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UltraPasteSettings.cs" />
+    <Compile Include="Models\UltraPasteSettings.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CapCutDataParser\CapCutDataParser.csproj">
@@ -148,9 +169,25 @@
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="packages.config" />
+    <EmbeddedResource Include="Resources\Templates\LegacyText.bin" />
+    <EmbeddedResource Include="Resources\Templates\AdjustmentEvent.vegclb" />
+    <EmbeddedResource Include="Resources\Templates\EmptyAudioEvent.vegclb" />
+    <EmbeddedResource Include="Resources\Templates\EmptyVideoEvent.vegclb" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\..\packages\Melanchall.DryWetMidi.8.0.3\build\Melanchall.DryWetMidi.targets" Condition="Exists('..\..\packages\Melanchall.DryWetMidi.8.0.3\build\Melanchall.DryWetMidi.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>这台计算机上缺少此项目引用的 NuGet 程序包。使用“NuGet 程序包还原”可下载这些程序包。有关更多信息，请参见 http://go.microsoft.com/fwlink/?LinkID=322105。缺少的文件是 {0}。</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\..\packages\Melanchall.DryWetMidi.8.0.3\build\Melanchall.DryWetMidi.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Melanchall.DryWetMidi.8.0.3\build\Melanchall.DryWetMidi.targets'))" />
+    <Error Condition="!Exists('..\..\packages\ILRepack.2.0.44\build\ILRepack.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\ILRepack.2.0.44\build\ILRepack.props'))" />
+  </Target>
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>"$(SolutionDir)packages\ILRepack.2.0.44\tools\ILRepack.exe" /out:"$(TargetDir)Merged\$(TargetFileName)" "$(TargetPath)" "$(TargetDir)ReaperDataParser.dll" "$(TargetDir)CapCutDataParser.dll" "$(TargetDir)Melanchall.DryWetMidi.dll" "$(TargetDir)WindowsInput.dll"
+xcopy /R /Y "$(TargetDir)Merged\$(TargetFileName)" "C:\ProgramData\VEGAS Pro\Application Extensions\"</PostBuildEvent>
   </PropertyGroup>
 </Project>

@@ -7,13 +7,12 @@ using Sony.Vegas;
 using System;
 using System.IO;
 using System.Text;
-using System.Linq;
 using System.Diagnostics;
 using System.Windows.Forms;
+using System.Xml.Serialization;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
-using System.Xml.Serialization;
 
 #if TEST
 public static class S
@@ -29,12 +28,7 @@ namespace UltraPaste.Utilities
 {
     internal static class VegasCommonHelper
     {
-        private const string VEGAS_DATA_FORMAT = "Vegas Data 5.0";
-        private const string SONY_VEGAS_DATA_FORMAT = "Sony Vegas Data 5.0";
-        private const string VEGAS_METADATA_FORMAT = "Vegas Meta-Data 5.0";
-        private const string SONY_VEGAS_METADATA_FORMAT = "Sony Vegas Meta-Data 5.0";
-
-        public static int VegasVersion = FileVersionInfo.GetVersionInfo(Application.ExecutablePath).FileMajorPart;
+        public static FileVersionInfo VegasVersionInfo = FileVersionInfo.GetVersionInfo(Application.ExecutablePath);
         public static string RoamingPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
 #if !Sony
@@ -76,6 +70,22 @@ namespace UltraPaste.Utilities
             }
         }
 
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        private static void SetForegroundWindow(IWin32Window window)
+        {
+            if (window?.Handle != IntPtr.Zero)
+            {
+                SetForegroundWindow(window.Handle);
+            }
+        }
+
+        public static void FocusToVegasMainWindow(this Vegas vegas)
+        {
+            SetForegroundWindow(vegas.MainWindow);
+        }
+
         public static bool IsPathMatch(string path, string dosExpression)
         {
             if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(dosExpression))
@@ -109,62 +119,6 @@ namespace UltraPaste.Utilities
             }
 
             return false;
-        }
-
-        // get a mix of modern VEGAS data and Sony one, allowing users to paste between the two
-        public static void GenerateMixedVegasClipboardData()
-        {
-            if (!Clipboard.ContainsData(VEGAS_DATA_FORMAT) && !Clipboard.ContainsData(SONY_VEGAS_DATA_FORMAT) && 
-                !Clipboard.ContainsData(VEGAS_METADATA_FORMAT) && !Clipboard.ContainsData(SONY_VEGAS_METADATA_FORMAT))
-            {
-                return;
-            }
-
-            IDataObject oldData = Clipboard.GetDataObject();
-            DataObject newData = new DataObject();
-
-            Dictionary<string, object> dic = new Dictionary<string, object>
-            {
-                { VEGAS_DATA_FORMAT, null }, 
-                { SONY_VEGAS_DATA_FORMAT, null }, 
-                { VEGAS_METADATA_FORMAT, null }, 
-                { SONY_VEGAS_METADATA_FORMAT, null }
-            };
-
-            if (oldData != null)
-            {
-                foreach (string existingFormat in oldData.GetFormats())
-                {
-                    object obj = oldData.GetData(existingFormat);
-                    if (dic.ContainsKey(existingFormat))
-                    {
-                        dic[existingFormat] = obj;
-                    }
-                    else
-                    {
-                        newData.SetData(existingFormat, obj);
-                    }
-                }
-            }
-
-            if (dic[VEGAS_DATA_FORMAT] != null || dic[SONY_VEGAS_DATA_FORMAT] != null)
-            {
-                dic[VEGAS_DATA_FORMAT] = dic[VEGAS_DATA_FORMAT] ?? dic[SONY_VEGAS_DATA_FORMAT];
-                dic[SONY_VEGAS_DATA_FORMAT] = dic[SONY_VEGAS_DATA_FORMAT] ?? dic[VEGAS_DATA_FORMAT];
-
-                newData.SetData(VEGAS_DATA_FORMAT, dic[VEGAS_DATA_FORMAT]);
-                newData.SetData(SONY_VEGAS_DATA_FORMAT, dic[SONY_VEGAS_DATA_FORMAT]);
-            }
-
-            if (dic[VEGAS_METADATA_FORMAT] != null || dic[SONY_VEGAS_METADATA_FORMAT] != null)
-            {
-                dic[VEGAS_METADATA_FORMAT] = dic[VEGAS_METADATA_FORMAT] ?? dic[SONY_VEGAS_METADATA_FORMAT];
-                dic[SONY_VEGAS_METADATA_FORMAT] = dic[SONY_VEGAS_METADATA_FORMAT] ?? dic[VEGAS_METADATA_FORMAT];
-                newData.SetData(VEGAS_METADATA_FORMAT, dic[VEGAS_METADATA_FORMAT]);
-                newData.SetData(SONY_VEGAS_METADATA_FORMAT, dic[SONY_VEGAS_METADATA_FORMAT]);
-            }
-
-            Clipboard.SetDataObject(newData, true);
         }
 
         // get all valid paths
@@ -462,6 +416,60 @@ namespace UltraPaste.Utilities
         {
             List<T> l = project.GetSelectedEvents<T>();
             return l.Count > index ? l[index] : null;
+        }
+
+        public static bool HasSelectedTracksInRange<T>(this Project project, int minCount = 1, int maxCount = -1) where T : Track
+        {
+            int count = 0;
+
+            foreach (Track myTrack in project.Tracks)
+            {
+                if (myTrack.Selected)
+                {
+                    if ((typeof(T) == typeof(VideoTrack) && !myTrack.IsVideo()) || (typeof(T) == typeof(AudioTrack) && !myTrack.IsAudio()))
+                    {
+                        continue;
+                    }
+                    count += 1;
+                    if (maxCount < 0 && minCount > -1 && count >= minCount)
+                    {
+                        return true;
+                    }
+                    if (minCount < 0 && maxCount > -1 && count > maxCount)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return (minCount < 0 || count >= minCount) && (maxCount < 0 || count <= maxCount);
+        }
+
+        public static bool HasSelectedEventsInRange<T>(this Project project, int minCount = 1, int maxCount = -1) where T : TrackEvent
+        {
+            int count = 0;
+            foreach (Track myTrack in project.Tracks)
+            {
+                if ((typeof(T) == typeof(VideoEvent) && !myTrack.IsVideo()) || (typeof(T) == typeof(AudioEvent) && !myTrack.IsAudio()))
+                {
+                    continue;
+                }
+                foreach (TrackEvent ev in myTrack.Events)
+                {
+                    if (ev.Selected)
+                    {
+                        count += 1;
+                        if (maxCount < 0 && minCount > -1 && count >= minCount)
+                        {
+                            return true;
+                        }
+                        if (minCount < 0 && maxCount > -1 && count > maxCount)
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return (minCount < 0 || minCount <= count) && (maxCount < 0 || count <= maxCount);
         }
 
         public static Timecode GetEndTimeFromMarkers<T>(this List<T> markers) where T : Marker

@@ -34,19 +34,21 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Models\ReaperBlock.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ReaperBlock.cs" />
-    <Compile Include="ReaperData.cs" />
-    <Compile Include="ReaperEnvelope.cs" />
-    <Compile Include="ReaperItem.cs" />
-    <Compile Include="ReaperParser.cs" />
-    <Compile Include="ReaperSource.cs" />
-    <Compile Include="ReaperSourceSection.cs" />
-    <Compile Include="ReaperStretchMarker.cs" />
-    <Compile Include="ReaperStretchSegment.cs" />
-    <Compile Include="ReaperStretchSegments.cs" />
-    <Compile Include="ReaperTake.cs" />
-    <Compile Include="ReaperTrack.cs" />
+    <Compile Include="Models\ReaperData.cs" />
+    <Compile Include="Models\ReaperEnvelope.cs" />
+    <Compile Include="Models\ReaperItem.cs" />
+    <Compile Include="Parsers\ReaperParser.cs" />
+    <Compile Include="Models\ReaperSource.cs" />
+    <Compile Include="Models\ReaperSourceMidi.cs" />
+    <Compile Include="Models\ReaperSourceSection.cs" />
+    <Compile Include="Models\ReaperStretchMarker.cs" />
+    <Compile Include="Models\ReaperStretchSegment.cs" />
+    <Compile Include="Models\ReaperStretchSegments.cs" />
+    <Compile Include="Models\ReaperTake.cs" />
+    <Compile Include="Models\ReaperTempoEnvelope.cs" />
+    <Compile Include="Models\ReaperTrack.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

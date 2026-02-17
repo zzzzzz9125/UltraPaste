@@ -10,10 +10,11 @@ using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 
-using ReaperDataParser;
+using ReaperDataParser.Models;
 
 namespace UltraPaste.Utilities
 {
+    using UltraPaste.Core;
     internal static class ReaperDataHelper
     {
         internal static readonly Assembly VegasAssembly = typeof(Vegas).Assembly;
@@ -497,7 +498,7 @@ namespace UltraPaste.Utilities
                                                 if (point != null)
                                                 {
                                                     t += Timecode.FromNanos(1);
-                                                }
+                                                  }
                                                 point = en.Points.GetPointAtX(t);
                                                 if (point != null)
                                                 {
@@ -507,7 +508,7 @@ namespace UltraPaste.Utilities
                                                 {
                                                     point = new EnvelopePoint(t, value);
                                                     en.Points.Add(point);
-                                                }
+                                                  }
                                             }
                                             point.Curve = CurveType.Linear;
 
@@ -669,7 +670,7 @@ namespace UltraPaste.Utilities
                                         t -= Timecode.FromNanos(1);
                                     }
                                 }
-                                CurveType curve = p[2] == 0 ? CurveType.Linear : p[2] == 1 ? CurveType.None : p[2] == 3 ? CurveType.Fast : p[2] == 4 ? CurveType.Slow : CurveType.Smooth;
+                                CurveType curve = p[2] == 0 ? CurveType.Linear : p[2] == 1 ? CurveType.None : p[2] == 3 ? CurveType.Fast : p[2] == 4 ? CurveType.Slow : p[2] == 5 ? CurveType.Smooth : p[2] == 6 ? CurveType.Sharp : CurveType.Fast;
                                 EnvelopePoint point = en.Points.GetPointAtX(t);
                                 double value = p[1];
                                 if (env.SegRange == null)
