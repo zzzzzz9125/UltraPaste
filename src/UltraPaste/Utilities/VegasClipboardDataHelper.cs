@@ -201,8 +201,8 @@ namespace UltraPaste.Utilities
             if (string.IsNullOrEmpty(fxPackageName))
                 throw new ArgumentNullException(nameof(fxPackageName), "FX package name cannot be null or empty.");
 
-            byte[] packageBytes = VegasFxPackagesHelper.FindFxPackageByName(fxPackageName) ?? throw new FileNotFoundException($"FX package '{fxPackageName}' not found in the registry.");
-            var fxPackageData = VegasFxPackagesHelper.VideoFxPackageData.Parse(packageBytes);
+            byte[] packageBytes = VegasFxPackageHelper.FindFxPackageByName(fxPackageName) ?? throw new FileNotFoundException($"FX package '{fxPackageName}' not found in the registry.");
+            var fxPackageData = VegasFxPackageHelper.VideoFxPackageData.Parse(packageBytes);
             byte[] clipboardPackageBytes = fxPackageData.ToClipboardBytes();
 
             byte[] templateBytes = GetEmptyVideoEventTemplateBytes() ?? throw new FileNotFoundException("Template file 'Vegas_Data_5.0.bin' not found or cannot be loaded.");

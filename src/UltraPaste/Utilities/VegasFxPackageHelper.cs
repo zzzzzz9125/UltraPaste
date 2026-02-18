@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 namespace UltraPaste.Utilities
 {
-    internal class VegasFxPackagesHelper
+    internal class VegasFxPackageHelper
     {
         private const string FX_PACKAGES_REGISTRY_PATH = @"Software\DirectShow\Presets\FX Packages\";
 

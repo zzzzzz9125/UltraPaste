@@ -142,7 +142,7 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Utilities\ReaperDataHelper.cs" />
-    <Compile Include="Utilities\VegasFxPackagesHelper.cs" />
+    <Compile Include="Utilities\VegasFxPackageHelper.cs" />
     <Compile Include="Utilities\YtpmvTriggerHelper.cs" />
     <Compile Include="Localization\I18n.cs" />
     <Compile Include="Models\SubtitlesData.cs" />
