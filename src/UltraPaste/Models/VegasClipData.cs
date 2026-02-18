@@ -1,49 +1,136 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
-using System.Windows.Forms;
 using System.Xml;
+using System.IO.Compression;
+using System.Collections.Generic;
+using System.Security.Cryptography;
 
 namespace UltraPaste.Utilities
 {
     /// <summary>
-    /// Represents a media file with absolute and relative paths.
+    /// Represents Vegas clip data that can be serialized and deserialized as a .vegclip package.
     /// </summary>
-    public class MediaFile
+    public class VegasClipData
     {
-        /// <summary>
-        /// Gets or sets the absolute path of the media file.
-        /// </summary>
-        public string AbsolutePath { get; set; }
+
+        private const string CURRENT_VERSION = "1.0";
 
         /// <summary>
-        /// Gets or sets the relative path of the media file within the archive.
+        /// Represents a media file with absolute and relative paths.
         /// </summary>
-        public string RelativePath { get; set; }
-
-        /// <summary>
-        /// Initializes a new instance of the MediaFile class.
-        /// </summary>
-        public MediaFile()
+        public class MediaFile
         {
+            /// <summary>
+            /// Gets or sets the absolute path of the media file.
+            /// </summary>
+            public string AbsolutePath { get; set; }
+
+            /// <summary>
+            /// Gets or sets the relative path of the media file (relative to the original project file).
+            /// </summary>
+            public string RelativePath { get; set; }
+
+            /// <summary>
+            /// Gets or sets the archive path of the media file inside the package.
+            /// </summary>
+            public string ArchivePath { get; set; }
+
+            /// <summary>
+            /// Gets or sets the MD5 hash of the media file.
+            /// </summary>
+            public string Hash { get; set; }
+
+            /// <summary>
+            /// Initializes a new instance of the MediaFile class.
+            /// </summary>
+            public MediaFile()
+            {
+            }
+
+            /// <summary>
+            /// Initializes a new instance of the MediaFile class with the specified absolute path, computes the hash, and optionally updates the project-relative path.
+            /// </summary>
+            public MediaFile(string absolutePath, string projectFilePath = null)
+            {
+                AbsolutePath = absolutePath;
+                Hash = ComputeFileHash(absolutePath);
+                if (projectFilePath != null)
+                {
+                    UpdateRelativePath(projectFilePath);
+                }
+            }
+
+            /// <summary>
+            /// Updates the relative path using the specified project file path.
+            /// </summary>
+            public void UpdateRelativePath(string projectFilePath)
+            {
+                if (string.IsNullOrEmpty(projectFilePath) || string.IsNullOrEmpty(AbsolutePath))
+                {
+                    RelativePath = string.Empty;
+                    return;
+                }
+
+                string projectDirectory = Path.GetDirectoryName(projectFilePath);
+                RelativePath = GetRelativePath(projectDirectory, AbsolutePath);
+            }
+
+            private static string ComputeFileHash(string filePath)
+            {
+                if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+                {
+                    return string.Empty;
+                }
+
+                using (MD5 md5 = MD5.Create())
+                {
+                    using (FileStream stream = File.OpenRead(filePath))
+                    {
+                        byte[] hashBytes = md5.ComputeHash(stream);
+                        return BitConverter.ToString(hashBytes).Replace("-", string.Empty).ToLowerInvariant();
+                    }
+                }
+            }
+
+            private static string GetRelativePath(string baseDirectory, string fullPath)
+            {
+                if (string.IsNullOrEmpty(baseDirectory) || string.IsNullOrEmpty(fullPath))
+                {
+                    return string.Empty;
+                }
+
+                Uri baseUri = new Uri(AppendDirectorySeparatorChar(baseDirectory));
+                Uri fileUri = new Uri(fullPath);
+                if (!string.Equals(baseUri.Scheme, fileUri.Scheme, StringComparison.OrdinalIgnoreCase))
+                {
+                    return fullPath;
+                }
+
+                string relativePath = Uri.UnescapeDataString(baseUri.MakeRelativeUri(fileUri).ToString());
+                return relativePath.Replace('/', Path.DirectorySeparatorChar);
+            }
+
+            private static string AppendDirectorySeparatorChar(string path)
+            {
+                if (string.IsNullOrEmpty(path))
+                {
+                    return path;
+                }
+
+                if (path[path.Length - 1] != Path.DirectorySeparatorChar && path[path.Length - 1] != Path.AltDirectorySeparatorChar)
+                {
+                    return path + Path.DirectorySeparatorChar;
+                }
+
+                return path;
+            }
         }
 
         /// <summary>
-        /// Initializes a new instance of the MediaFile class with the specified paths.
+        /// Gets or sets the Vegas clip data format version.
         /// </summary>
-        public MediaFile(string absolutePath, string relativePath)
-        {
-            AbsolutePath = absolutePath;
-            RelativePath = relativePath;
-        }
-    }
+        public string Version { get; set; }
 
-    /// <summary>
-    /// Represents Vegas clipboard data that can be serialized and deserialized as a .vegclb package.
-    /// </summary>
-    public class VegasClipboardData
-    {
         /// <summary>
         /// Gets or sets the Vegas data bytes.
         /// </summary>
@@ -55,7 +142,7 @@ namespace UltraPaste.Utilities
         public byte[] MetaDataBytes { get; set; }
 
         /// <summary>
-        /// Gets or sets the timestamp of the clipboard data.
+        /// Gets or sets the timestamp of the clip data.
         /// </summary>
         public DateTime Time { get; set; }
 
@@ -65,32 +152,33 @@ namespace UltraPaste.Utilities
         public string VegasVersion { get; set; }
 
         /// <summary>
-        /// Gets or sets the display name for the clipboard data.
+        /// Gets or sets the display name for the clip data.
         /// </summary>
         public string Name { get; set; }
 
         /// <summary>
-        /// Gets or sets the comment for the clipboard data.
+        /// Gets or sets the comment for the clip data.
         /// </summary>
         public string Comment { get; set; }
 
         /// <summary>
-        /// Gets or sets the list of media files associated with this clipboard data.
+        /// Gets or sets the list of media files associated with this clip data.
         /// </summary>
         public List<MediaFile> MediaFiles { get; set; }
 
         /// <summary>
-        /// Initializes a new instance of the VegasClipboardData class.
+        /// Initializes a new instance of the VegasClipData class.
         /// </summary>
-        public VegasClipboardData()
+        public VegasClipData()
         {
             MediaFiles = new List<MediaFile>();
             Time = DateTime.Now;
+            Version = CURRENT_VERSION;
             VegasVersion = $"{VegasCommonHelper.VegasVersionInfo.FileMajorPart}.{VegasCommonHelper.VegasVersionInfo.FileMinorPart}.{VegasCommonHelper.VegasVersionInfo.FileBuildPart}.{VegasCommonHelper.VegasVersionInfo.FilePrivatePart}";
         }
 
         /// <summary>
-        /// Saves the clipboard data to a .vegclb file (zip format).
+        /// Saves the clip data to a .vegclip file (zip format).
         /// </summary>
         /// <param name="filePath">The path where the file will be saved</param>
         /// <param name="includeMediaFiles">Whether to include media files in the archive</param>
@@ -149,7 +237,8 @@ namespace UltraPaste.Utilities
                             if (File.Exists(mediaFile.AbsolutePath))
                             {
                                 string extension = Path.GetExtension(mediaFile.AbsolutePath);
-                                string archiveFileName = $"Media/Media_{i:D6}{extension}";
+                                string archiveFileName = string.IsNullOrEmpty(mediaFile.ArchivePath) ? $"Media/Media_{i:D6}{extension}" : mediaFile.ArchivePath;
+                                mediaFile.ArchivePath = archiveFileName;
                                 ZipArchiveEntry mediaEntry = archive.CreateEntry(archiveFileName);
                                 using (FileStream sourceStream = File.OpenRead(mediaFile.AbsolutePath))
                                 {
@@ -166,19 +255,19 @@ namespace UltraPaste.Utilities
         }
 
         /// <summary>
-        /// Loads clipboard data from a .vegclb stream (zip format).
+        /// Loads clip data from a .vegclip stream (zip format).
         /// </summary>
-        /// <param name="stream">The stream containing the .vegclb data.</param>
+        /// <param name="stream">The stream containing the .vegclip data.</param>
         /// <param name="loadMediaFiles">Whether to load media files from the archive.</param>
-        /// <returns>A new VegasClipboardData instance with loaded data.</returns>
+        /// <returns>A new VegasClipData instance with loaded data.</returns>
         /// <exception cref="ArgumentNullException">Thrown when stream is null.</exception>
         /// <exception cref="InvalidOperationException">Thrown when required files are missing from the archive.</exception>
-        public static VegasClipboardData Load(Stream stream, bool loadMediaFiles = false)
+        public static VegasClipData Load(Stream stream, bool loadMediaFiles = false)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "Stream cannot be null.");
 
-            VegasClipboardData data = new VegasClipboardData();
+            VegasClipData data = new VegasClipData();
 
             using (ZipArchive archive = new ZipArchive(stream, ZipArchiveMode.Read, true))
             {
@@ -225,15 +314,15 @@ namespace UltraPaste.Utilities
         }
 
         /// <summary>
-        /// Loads clipboard data from a .vegclb file (zip format).
+        /// Loads clip data from a .vegclip file (zip format).
         /// </summary>
-        /// <param name="filePath">The path of the .vegclb file to load</param>
+        /// <param name="filePath">The path of the .vegclip file to load</param>
         /// <param name="loadMediaFiles">Whether to load media files from the archive</param>
-        /// <returns>A new VegasClipboardData instance with loaded data</returns>
+        /// <returns>A new VegasClipData instance with loaded data</returns>
         /// <exception cref="ArgumentNullException">Thrown when filePath is null or empty</exception>
         /// <exception cref="FileNotFoundException">Thrown when the file does not exist</exception>
         /// <exception cref="InvalidOperationException">Thrown when required files are missing from the archive</exception>
-        public static VegasClipboardData Load(string filePath, bool loadMediaFiles = false)
+        public static VegasClipData Load(string filePath, bool loadMediaFiles = false)
         {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath), "File path cannot be null or empty.");
@@ -248,13 +337,19 @@ namespace UltraPaste.Utilities
         }
 
         /// <summary>
-        /// Creates the info.xml document containing metadata about the clipboard data.
+        /// Creates the info.xml document containing metadata about the clip data.
         /// </summary>
         private XmlDocument CreateInfoXml(bool includeMediaFiles)
         {
             XmlDocument doc = new XmlDocument();
-            XmlElement root = doc.CreateElement("VegasClipboardData");
+            XmlDeclaration declaration = doc.CreateXmlDeclaration("1.0", "utf-8", null);
+            doc.AppendChild(declaration);
+            XmlElement root = doc.CreateElement("VegasClipData");
             doc.AppendChild(root);
+
+            XmlElement formatVersionElement = doc.CreateElement("Version");
+            formatVersionElement.InnerText = Version ?? string.Empty;
+            root.AppendChild(formatVersionElement);
 
             XmlElement timeElement = doc.CreateElement("Time");
             timeElement.InnerText = new DateTimeOffset(Time).ToUnixTimeMilliseconds().ToString();
@@ -284,10 +379,12 @@ namespace UltraPaste.Utilities
                 {
                     MediaFile mediaFile = MediaFiles[i];
                     string extension = Path.GetExtension(mediaFile.AbsolutePath);
-                    
+                    string archiveFileName = string.IsNullOrEmpty(mediaFile.ArchivePath) ? $"Media/Media_{i:D6}{extension}" : mediaFile.ArchivePath;
+                    mediaFile.ArchivePath = archiveFileName;
+
                     XmlElement mediaElement = doc.CreateElement("MediaFile");
                     mediaElement.SetAttribute("index", i.ToString());
-                    mediaElement.SetAttribute("archiveName", $"Media_{i:D6}{extension}");
+                    mediaElement.SetAttribute("archiveName", Path.GetFileName(archiveFileName));
 
                     XmlElement absolutePathElement = doc.CreateElement("AbsolutePath");
                     absolutePathElement.InnerText = mediaFile.AbsolutePath ?? string.Empty;
@@ -296,6 +393,14 @@ namespace UltraPaste.Utilities
                     XmlElement relativePathElement = doc.CreateElement("RelativePath");
                     relativePathElement.InnerText = mediaFile.RelativePath ?? string.Empty;
                     mediaElement.AppendChild(relativePathElement);
+
+                    XmlElement archivePathElement = doc.CreateElement("ArchivePath");
+                    archivePathElement.InnerText = mediaFile.ArchivePath ?? string.Empty;
+                    mediaElement.AppendChild(archivePathElement);
+
+                    XmlElement hashElement = doc.CreateElement("Hash");
+                    hashElement.InnerText = mediaFile.Hash ?? string.Empty;
+                    mediaElement.AppendChild(hashElement);
 
                     mediaFilesElement.AppendChild(mediaElement);
                 }
@@ -306,13 +411,19 @@ namespace UltraPaste.Utilities
         }
 
         /// <summary>
-        /// Parses the info.xml document and updates the clipboard data instance.
+        /// Parses the info.xml document and updates the clip data instance.
         /// </summary>
-        private static void ParseInfoXml(VegasClipboardData data, XmlDocument doc, bool loadMediaFiles)
+        private static void ParseInfoXml(VegasClipData data, XmlDocument doc, bool loadMediaFiles)
         {
             XmlElement root = doc.DocumentElement;
             if (root == null)
                 return;
+
+            XmlElement formatVersionElement = root.SelectSingleNode("Version") as XmlElement;
+            if (formatVersionElement != null)
+            {
+                data.Version = formatVersionElement.InnerText;
+            }
 
             // Parse Time
             XmlElement timeElement = root.SelectSingleNode("Time") as XmlElement;
@@ -360,11 +471,17 @@ namespace UltraPaste.Utilities
                         MediaFile mediaFile = new MediaFile();
                         XmlElement absolutePathElement = mediaElement.SelectSingleNode("AbsolutePath") as XmlElement;
                         XmlElement relativePathElement = mediaElement.SelectSingleNode("RelativePath") as XmlElement;
+                        XmlElement archivePathElement = mediaElement.SelectSingleNode("ArchivePath") as XmlElement;
+                        XmlElement hashElement = mediaElement.SelectSingleNode("Hash") as XmlElement;
 
                         if (absolutePathElement != null)
                             mediaFile.AbsolutePath = absolutePathElement.InnerText;
                         if (relativePathElement != null)
                             mediaFile.RelativePath = relativePathElement.InnerText;
+                        if (archivePathElement != null)
+                            mediaFile.ArchivePath = archivePathElement.InnerText;
+                        if (hashElement != null)
+                            mediaFile.Hash = hashElement.InnerText;
 
                         data.MediaFiles.Add(mediaFile);
                     }
@@ -373,9 +490,9 @@ namespace UltraPaste.Utilities
         }
 
         /// <summary>
-        /// Loads media files from the archive into the clipboard data instance.
+        /// Loads media files from the archive into the clip data instance.
         /// </summary>
-        private static void LoadMediaFilesFromArchive(VegasClipboardData data, ZipArchive archive)
+        private static void LoadMediaFilesFromArchive(VegasClipData data, ZipArchive archive)
         {
             foreach (ZipArchiveEntry entry in archive.Entries)
             {

@@ -204,14 +204,14 @@ namespace UltraPaste.UI.Controls.Panels
                                 UltraPasteCommon.Vegas.RefreshCursorPosition(start);
                             }
                         }
-                        VegasClipboardDataHelper.ApplyFxPackageToClipboard(sel, length);
+                        VegasClipDataHelper.ApplyFxPackageToClipboard(sel, length);
                         if (length == null && UltraPasteCommon.Vegas.Project.HasSelectedEventsInRange<VideoEvent>(1))
                         {
-                            VegasClipboardDataHelper.DoPasteEventAttributes(false, false, true);
+                            VegasClipDataHelper.DoPasteEventAttributes(false, false, true);
                         }
                         else
                         {
-                            VegasClipboardDataHelper.DoNormalPaste();
+                            VegasClipDataHelper.DoNormalPaste();
                         }
                     }
                     catch (Exception ex)

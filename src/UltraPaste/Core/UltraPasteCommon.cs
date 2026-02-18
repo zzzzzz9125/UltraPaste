@@ -87,7 +87,7 @@ namespace UltraPaste.Core
             }
             else if (pasteAttributes)
             {
-                VegasClipboardDataHelper.DoPasteEventAttributes();
+                VegasClipDataHelper.DoPasteEventAttributes();
             }
         }
 
@@ -905,7 +905,7 @@ namespace UltraPaste.Core
 
         public static void GenerateMixedVegasClipboardData(object o, EventArgs e)
         {
-            VegasClipboardDataHelper.GenerateMixedVegasClipboardData();
+            VegasClipDataHelper.GenerateMixedVegasClipboardData();
         }
     }
 }

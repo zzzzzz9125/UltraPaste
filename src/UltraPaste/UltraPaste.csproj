@@ -133,8 +133,8 @@
     <Compile Include="Utilities\MediaDownloadHelper.cs" />
     <Compile Include="Utilities\PlugInHelper.cs" />
     <Compile Include="Utilities\TrackEventHelper.cs" />
-    <Compile Include="Models\VegasClipboardData.cs" />
-    <Compile Include="Utilities\VegasClipboardDataHelper.cs" />
+    <Compile Include="Models\VegasClipData.cs" />
+    <Compile Include="Utilities\VegasClipDataHelper.cs" />
     <Compile Include="Utilities\VegasCommonHelper.cs" />
     <Compile Include="Utilities\ImageDataHelper.cs" />
     <Compile Include="Utilities\ImageSequenceHelper.cs" />
@@ -173,9 +173,9 @@
     <None Include="app.config" />
     <None Include="packages.config" />
     <EmbeddedResource Include="Resources\Templates\LegacyText.bin" />
-    <EmbeddedResource Include="Resources\Templates\AdjustmentEvent.vegclb" />
-    <EmbeddedResource Include="Resources\Templates\EmptyAudioEvent.vegclb" />
-    <EmbeddedResource Include="Resources\Templates\EmptyVideoEvent.vegclb" />
+    <EmbeddedResource Include="Resources\Templates\AdjustmentEvent.vegclip" />
+    <EmbeddedResource Include="Resources\Templates\EmptyAudioEvent.vegclip" />
+    <EmbeddedResource Include="Resources\Templates\EmptyVideoEvent.vegclip" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\..\packages\Melanchall.DryWetMidi.8.0.3\build\Melanchall.DryWetMidi.targets" Condition="Exists('..\..\packages\Melanchall.DryWetMidi.8.0.3\build\Melanchall.DryWetMidi.targets')" />

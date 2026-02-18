@@ -180,11 +180,11 @@ namespace UltraPaste.Core
             {
                 try
                 {
-                    using (SaveFileDialog sfd = new SaveFileDialog())
+                    using (SaveFileDialog sfd = new SaveFileDialog() { Filter = "Vegas Clip Data (*.vegclip)|*.vegclip" })
                     {
                         if (sfd.ShowDialog() == DialogResult.OK)
                         {
-                            VegasClipboardDataHelper.ExtractFromClipboardAndSave(sfd.FileName);
+                            VegasClipDataHelper.ExtractFromClipboardAndSave(sfd.FileName);
                         }
                     }
 

@@ -15,7 +15,7 @@ using WindowsInput.Native;
 namespace UltraPaste.Utilities
 {
     using UltraPaste.Core;
-    internal class VegasClipboardDataHelper
+    internal class VegasClipDataHelper
     {
         private const string VEGAS_DATA_FORMAT = "Vegas Data 5.0";
         private const string SONY_VEGAS_DATA_FORMAT = "Sony Vegas Data 5.0";
@@ -23,26 +23,26 @@ namespace UltraPaste.Utilities
         private const string SONY_VEGAS_METADATA_FORMAT = "Sony Vegas Meta-Data 5.0";
 
         /// <summary>
-        /// Extracts Vegas clipboard data from the current clipboard and saves it as a .vegclb file.
+        /// Extracts Vegas clip data from the current clipboard and saves it as a .vegclip file.
         /// Prioritizes non-Sony formats if both Sony and non-Sony formats are present.
         /// </summary>
-        /// <param name="filePath">The path where the .vegclb file will be saved</param>
+        /// <param name="filePath">The path where the .vegclip file will be saved</param>
         /// <param name="includeMediaFiles">Whether to include media files in the package</param>
-        /// <returns>A VegasClipboardData instance if successful, null otherwise</returns>
+        /// <returns>A VegasClipData instance if successful, null otherwise</returns>
         /// <exception cref="ArgumentNullException">Thrown when filePath is null or empty</exception>
-        /// <exception cref="InvalidOperationException">Thrown when clipboard data cannot be extracted</exception>
-        public static VegasClipboardData ExtractFromClipboardAndSave(string filePath, bool includeMediaFiles = false)
+        /// <exception cref="InvalidOperationException">Thrown when clip data cannot be extracted</exception>
+        public static VegasClipData ExtractFromClipboardAndSave(string filePath, bool includeMediaFiles = false)
         {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath), "File path cannot be null or empty.");
 
             IDataObject dataObject = Clipboard.GetDataObject();
             if (dataObject == null)
-                throw new InvalidOperationException("Failed to get clipboard data.");
+                throw new InvalidOperationException("Failed to get clip data.");
 
-            VegasClipboardData vegasData = ExtractFromDataObject(dataObject);
+            VegasClipData vegasData = ExtractFromDataObject(dataObject);
             if (vegasData == null || vegasData.DataBytes == null || vegasData.MetaDataBytes == null)
-                throw new InvalidOperationException("Failed to extract Vegas clipboard data from clipboard.");
+                throw new InvalidOperationException("Failed to extract Vegas clip data from clipboard.");
 
             vegasData.Name = Path.GetFileNameWithoutExtension(filePath);
 
@@ -51,17 +51,17 @@ namespace UltraPaste.Utilities
         }
 
         /// <summary>
-        /// Extracts Vegas clipboard data from a data object.
+        /// Extracts Vegas clip data from a data object.
         /// Prioritizes non-Sony formats if both Sony and non-Sony formats are present.
         /// </summary>
         /// <param name="dataObject">The data object to extract from</param>
-        /// <returns>A VegasClipboardData instance if successful, null otherwise</returns>
-        public static VegasClipboardData ExtractFromDataObject(IDataObject dataObject)
+        /// <returns>A VegasClipData instance if successful, null otherwise</returns>
+        public static VegasClipData ExtractFromDataObject(IDataObject dataObject)
         {
             if (dataObject == null)
                 return null;
 
-            VegasClipboardData vegasData = new VegasClipboardData();
+            VegasClipData vegasData = new VegasClipData();
 
             // Extract DataBytes with priority: Vegas Data 5.0 > Sony Vegas Data 5.0
             object vegasDataObj = dataObject.GetData(VEGAS_DATA_FORMAT);
@@ -227,13 +227,13 @@ namespace UltraPaste.Utilities
         }
 
         /// <summary>
-        /// Applies an FX package to the clipboard by generating clipboard data for both Vegas Data and Meta-Data formats.
+        /// Applies an FX package to the clipboard by generating clip data for both Vegas Data and Meta-Data formats.
         /// </summary>
         /// <param name="fxPackageName">The name of the FX package to apply</param>
-        /// <param name="length">Optional event length to apply to the generated clipboard bytes.</param>
+        /// <param name="length">Optional event length to apply to the generated clip bytes.</param>
         /// <exception cref="ArgumentNullException">Thrown when fxPackageName is null or empty</exception>
         /// <exception cref="FileNotFoundException">Thrown when the FX package is not found</exception>
-        /// <exception cref="InvalidOperationException">Thrown when clipboard data cannot be generated</exception>
+        /// <exception cref="InvalidOperationException">Thrown when clip data cannot be generated</exception>
         public static void ApplyFxPackageToClipboard(string fxPackageName, Timecode length = null)
         {
             if (string.IsNullOrEmpty(fxPackageName))
@@ -321,15 +321,15 @@ namespace UltraPaste.Utilities
         /// <summary>
         /// Gets the template data from the embedded vegclb resource.
         /// </summary>
-        /// <returns>The parsed <see cref="VegasClipboardData"/> template.</returns>
+        /// <returns>The parsed <see cref="VegasClipData"/> template.</returns>
         /// <exception cref="FileNotFoundException">Thrown when the template file cannot be found.</exception>
-        private static VegasClipboardData GetEmptyVideoEventTemplateData()
+        private static VegasClipData GetEmptyVideoEventTemplateData()
         {
-            string resourcePath = string.Format("Templates.{0}.vegclb", VegasCommonHelper.VegasVersionInfo.FileMajorPart > 20 ? "AdjustmentEvent" : "EmptyVideoEvent");
+            string resourcePath = string.Format("Templates.{0}.vegclip", VegasCommonHelper.VegasVersionInfo.FileMajorPart > 20 ? "AdjustmentEvent" : "EmptyVideoEvent");
             byte[] templateBytes = ReadSourceBytes(resourcePath);
             using (MemoryStream stream = new MemoryStream(templateBytes))
             {
-                return VegasClipboardData.Load(stream);
+                return VegasClipData.Load(stream);
             }
         }
 
@@ -342,7 +342,7 @@ namespace UltraPaste.Utilities
         {
             try
             {
-                VegasClipboardData template = GetEmptyVideoEventTemplateData();
+                VegasClipData template = GetEmptyVideoEventTemplateData();
                 return template?.MetaDataBytes;
             }
             catch (FileNotFoundException)
@@ -364,7 +364,7 @@ namespace UltraPaste.Utilities
         {
             try
             {
-                VegasClipboardData template = GetEmptyVideoEventTemplateData();
+                VegasClipData template = GetEmptyVideoEventTemplateData();
                 return template?.DataBytes;
             }
             catch (FileNotFoundException)
