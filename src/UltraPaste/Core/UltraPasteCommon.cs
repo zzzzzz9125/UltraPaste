@@ -30,7 +30,7 @@ namespace UltraPaste.Core
     {
         public static string SettingsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Vegas Application Extensions", "UltraPaste");
         public static UltraPasteSettings Settings = UltraPasteSettings.LoadFromFile();
-        public const string VERSION = "v1.4.0";
+        public const string VERSION = "v1.4.0 alpha";
         public static Vegas Vegas { get { return myVegas; } set { myVegas = value; } }
         private static Vegas myVegas;
         private static KeyValuePair<string, byte[]> lastImagePathAndBytes = new KeyValuePair<string, byte[]>();

@@ -24,7 +24,7 @@ namespace UltraPaste.Localization
 
         public class TranslationLanguage
         {
-            public string ShortName, DisplayName;
+            public string Name, DisplayName;
 
             public TranslationStrings Translation { get { return translation; } set { translation = value; } }
             private TranslationStrings translation = new TranslationStrings();
@@ -133,11 +133,11 @@ namespace UltraPaste.Localization
                 VegImportType = new string[] { "Open Project File", "Import as Nested Project", "Import Media from Project" };
             }
 
-            public TranslationStrings(string shortName) : this()
+            public TranslationStrings(string name) : this()
             {
-                switch (shortName)
+                switch (name)
                 {
-                    case "zh":
+                    case "zh-CN":
                         Font = "Microsoft Yahei UI";
                         UltraPaste = "超级粘贴！";
                         UltraPasteWindow = "超级粘贴！- 窗口";
@@ -232,7 +232,7 @@ namespace UltraPaste.Localization
                 {
                     foreach (TranslationLanguage tran in Settings.Languages)
                     {
-                        tran.Translation.ForceUpdateTranslations(new TranslationStrings(tran.ShortName));
+                        tran.Translation.ForceUpdateTranslations(new TranslationStrings(tran.Name));
                     }
                     Settings.LastUpdatedVersion = UltraPasteCommon.VERSION;
                     SaveSettingsToXml();
@@ -244,16 +244,16 @@ namespace UltraPaste.Localization
                 Settings = new TranslationSettings();
                 TranslationLanguage tran = new TranslationLanguage()
                 {
-                    ShortName = "en",
+                    Name = "en-US",
                     DisplayName = "English",
-                    Translation = new TranslationStrings("en")
+                    Translation = new TranslationStrings("en-US")
                 };
                 Settings.Languages.Add(tran);
                 tran = new TranslationLanguage()
                 {
-                    ShortName = "zh",
+                    Name = "zh-CN",
                     DisplayName = "简体中文",
-                    Translation = new TranslationStrings("zh")
+                    Translation = new TranslationStrings("zh-CN")
                 };
                 Settings.Languages.Add(tran);
                 SaveSettingsToXml();
@@ -264,7 +264,7 @@ namespace UltraPaste.Localization
 
             foreach (TranslationLanguage lang in Settings.Languages)
             {
-                if (lang.ShortName == language)
+                if (lang.Name == language)
                 {
                     Translation = lang.Translation;
                     success = true;
@@ -279,7 +279,7 @@ namespace UltraPaste.Localization
             LanguageDictionary = new Dictionary<string, string>();
             foreach (TranslationLanguage lang in Settings.Languages)
             {
-                LanguageDictionary.Add(lang.ShortName, lang.DisplayName);
+                LanguageDictionary.Add(lang.Name, lang.DisplayName);
             }
         }
 
