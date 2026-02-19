@@ -3,9 +3,12 @@
 namespace UltraPaste.UI.Controls
 {
     using UltraPaste.Utilities;
+    using UltraPaste.Localization;
 
     internal class UltraTabPage : TabPage
     {
+        private Panel _panel;
+
         public UltraTabPage()
         {
             BackColor = VegasCommonHelper.UIColors[0];
@@ -17,8 +20,19 @@ namespace UltraPaste.UI.Controls
         {
             if (panel != null)
             {
+                _panel = panel;
                 Text = panel.Name;
                 Controls.Add(panel);
+
+                I18n.LanguageChanged += (o, e) => RefreshLocalization();
+            }
+        }
+
+        private void RefreshLocalization()
+        {
+            if (_panel != null)
+            {
+                Text = _panel.Name;
             }
         }
     }

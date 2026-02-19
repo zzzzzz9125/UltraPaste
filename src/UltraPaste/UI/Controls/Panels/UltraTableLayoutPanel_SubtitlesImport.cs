@@ -6,23 +6,36 @@ using System.Collections.Generic;
 namespace UltraPaste.UI.Controls.Panels
 {
     using UltraPaste.Core;
-    using UltraPaste.Localization;
     using UltraPaste.Models;
     using UltraPaste.Utilities;
+    using UltraPaste.Localization;
 
-    internal partial class UltraTableLayoutPanel_SubtitlesImport : UltraPaste.UI.Controls.UltraTableLayoutPanel
+    internal partial class UltraTableLayoutPanel_SubtitlesImport : UltraTableLayoutPanel
     {
+        private Label _mediaGeneratorLabel;
+        private Label _presetLabel;
+        private Label _maxCharactersLabel;
+        private Label _maxLinesLabel;
+        private Label _defaultLengthLabel;
+        private CheckBox _addTextMediaGeneratorsCheckBox;
+        private CheckBox _addRegionsCheckBox;
+        private CheckBox _ignoreWordCheckBox;
+        private CheckBox _multipleTracksCheckBox;
+        private CheckBox _closeGapCheckBox;
+        private Button _applyButton;
+        private Button _titlesTextButton;
+
         public UltraTableLayoutPanel_SubtitlesImport(UltraPasteSettings.SubtitlesImportSettings settings, ContainerControl formControl, bool addOneClickGroup = true) : base(settings, formControl)
         {
             Name = I18n.Translation.SubtitlesImport;
 
-            Label label = new Label
+            _mediaGeneratorLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.TextMediaGenerator,
                 AutoSize = true
             };
-            Controls.Add(label);
+            Controls.Add(_mediaGeneratorLabel);
 
             ComboBox mediaGeneratorCombo = new ComboBox
             {
@@ -36,23 +49,23 @@ namespace UltraPaste.UI.Controls.Panels
             };
             Controls.Add(mediaGeneratorCombo);
 
-            CheckBox addTextMediaGenerators = new CheckBox
+            _addTextMediaGeneratorsCheckBox = new CheckBox
             {
                 Text = I18n.Translation.AddTextMediaGenerators,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.AddTextMediaGenerators ?? true
             };
-            Controls.Add(addTextMediaGenerators);
-            SetColumnSpan(addTextMediaGenerators, 2);
+            Controls.Add(_addTextMediaGeneratorsCheckBox);
+            SetColumnSpan(_addTextMediaGeneratorsCheckBox, 2);
 
-            label = new Label
+            _presetLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.TextMediaGeneratorPresetName,
                 AutoSize = true
             };
-            Controls.Add(label);
+            Controls.Add(_presetLabel);
 
             ComboBox presetNameCombo = new ComboBox
             {
@@ -62,23 +75,23 @@ namespace UltraPaste.UI.Controls.Panels
             };
             Controls.Add(presetNameCombo);
 
-            CheckBox addRegions = new CheckBox
+            _addRegionsCheckBox = new CheckBox
             {
                 Text = I18n.Translation.AddRegions,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.AddRegions ?? false
             };
-            Controls.Add(addRegions);
-            SetColumnSpan(addRegions, 2);
+            Controls.Add(_addRegionsCheckBox);
+            SetColumnSpan(_addRegionsCheckBox, 2);
 
-            label = new Label
+            _maxCharactersLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.SubtitlesMaxCharacters,
                 AutoSize = true
             };
-            Controls.Add(label);
+            Controls.Add(_maxCharactersLabel);
 
             TextBox maxCharactersTextBox = new TextBox
             {
@@ -89,23 +102,23 @@ namespace UltraPaste.UI.Controls.Panels
             };
             Controls.Add(maxCharactersTextBox);
 
-            CheckBox ignoreWord = new CheckBox
+            _ignoreWordCheckBox = new CheckBox
             {
                 Text = I18n.Translation.SubtitlesIgnoreWord,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.IgnoreWord ?? false
             };
-            Controls.Add(ignoreWord);
-            SetColumnSpan(ignoreWord, 2);
+            Controls.Add(_ignoreWordCheckBox);
+            SetColumnSpan(_ignoreWordCheckBox, 2);
 
-            label = new Label
+            _maxLinesLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.SubtitlesMaxLines,
                 AutoSize = true
             };
-            Controls.Add(label);
+            Controls.Add(_maxLinesLabel);
 
             TextBox maxLinesTextBox = new TextBox
             {
@@ -116,23 +129,23 @@ namespace UltraPaste.UI.Controls.Panels
             };
             Controls.Add(maxLinesTextBox);
 
-            CheckBox multipleTracks = new CheckBox
+            _multipleTracksCheckBox = new CheckBox
             {
                 Text = I18n.Translation.SubtitlesMultipleTracks,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.MultipleTracks ?? false
             };
-            Controls.Add(multipleTracks);
-            SetColumnSpan(multipleTracks, 2);
+            Controls.Add(_multipleTracksCheckBox);
+            SetColumnSpan(_multipleTracksCheckBox, 2);
 
-            label = new Label
+            _defaultLengthLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.SubtitlesDefaultLength,
                 AutoSize = true
             };
-            Controls.Add(label);
+            Controls.Add(_defaultLengthLabel);
 
             TextBox defaultLengthTextBox = new TextBox
             {
@@ -143,20 +156,20 @@ namespace UltraPaste.UI.Controls.Panels
             };
             Controls.Add(defaultLengthTextBox);
 
-            CheckBox closeGap = new CheckBox
+            _closeGapCheckBox = new CheckBox
             {
                 Text = I18n.Translation.CloseGap,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.CloseGap ?? true
             };
-            Controls.Add(closeGap);
-            SetColumnSpan(closeGap, 2);
+            Controls.Add(_closeGapCheckBox);
+            SetColumnSpan(_closeGapCheckBox, 2);
 
             if (settings != null)
             {
-                addTextMediaGenerators.CheckedChanged += (o, e) => { settings.AddTextMediaGenerators = addTextMediaGenerators.Checked; };
-                addRegions.CheckedChanged += (o, e) => { settings.AddRegions = addRegions.Checked; };
+                _addTextMediaGeneratorsCheckBox.CheckedChanged += (o, e) => { settings.AddTextMediaGenerators = _addTextMediaGeneratorsCheckBox.Checked; };
+                _addRegionsCheckBox.CheckedChanged += (o, e) => { settings.AddRegions = _addRegionsCheckBox.Checked; };
 
                 if (formControl is Form form)
                 {
@@ -214,7 +227,7 @@ namespace UltraPaste.UI.Controls.Panels
                 };
                 maxCharactersTextBox.MouseWheel += TextBox_MouseWheel_Int_Max_Zero;
 
-                ignoreWord.CheckedChanged += (o, e) => { settings.IgnoreWord = ignoreWord.Checked; };
+                _ignoreWordCheckBox.CheckedChanged += (o, e) => { settings.IgnoreWord = _ignoreWordCheckBox.Checked; };
 
                 maxLinesTextBox.TextChanged += (o, e) =>
                 {
@@ -225,7 +238,7 @@ namespace UltraPaste.UI.Controls.Panels
                 };
                 maxLinesTextBox.MouseWheel += TextBox_MouseWheel_Int_Max_Zero;
 
-                multipleTracks.CheckedChanged += (o, e) => { settings.MultipleTracks = multipleTracks.Checked; };
+                _multipleTracksCheckBox.CheckedChanged += (o, e) => { settings.MultipleTracks = _multipleTracksCheckBox.Checked; };
 
                 defaultLengthTextBox.TextChanged += (o, e) =>
                 {
@@ -236,7 +249,7 @@ namespace UltraPaste.UI.Controls.Panels
                 };
                 defaultLengthTextBox.MouseWheel += TextBox_MouseWheel_Int_Max_Zero;
 
-                closeGap.CheckedChanged += (o, e) => { settings.CloseGap = closeGap.Checked; };
+                _closeGapCheckBox.CheckedChanged += (o, e) => { settings.CloseGap = _closeGapCheckBox.Checked; };
             }
 
             if (addOneClickGroup)
@@ -245,7 +258,7 @@ namespace UltraPaste.UI.Controls.Panels
                 Controls.Add(oneClickGroup);
                 SetColumnSpan(oneClickGroup, 4);
 
-                Button button = new Button
+                _applyButton = new Button
                 {
                     Text = I18n.Translation.SubtitlesApplyToSelectedEvents,
                     Margin = new Padding(3, 0, 3, 9),
@@ -254,13 +267,13 @@ namespace UltraPaste.UI.Controls.Panels
                     FlatStyle = FlatStyle.Flat,
                     Anchor = AnchorStyles.None
                 };
-                button.FlatAppearance.BorderSize = 1;
-                button.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-                buttonsPanel.Controls.Add(button);
+                _applyButton.FlatAppearance.BorderSize = 1;
+                _applyButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+                buttonsPanel.Controls.Add(_applyButton);
 
-                button.Click += UltraPasteCommon.SubtitlesApplyToSelectedEvents;
+                _applyButton.Click += UltraPasteCommon.SubtitlesApplyToSelectedEvents;
 
-                button = new Button
+                _titlesTextButton = new Button
                 {
                     Text = I18n.Translation.SubtitlesTitlesAndTextToProTypeTitler.Replace("&", "&&"),
                     Margin = new Padding(3, 0, 3, 9),
@@ -269,16 +282,41 @@ namespace UltraPaste.UI.Controls.Panels
                     FlatStyle = FlatStyle.Flat,
                     Anchor = AnchorStyles.None
                 };
-                button.FlatAppearance.BorderSize = 1;
-                button.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-                buttonsPanel.Controls.Add(button);
+                _titlesTextButton.FlatAppearance.BorderSize = 1;
+                _titlesTextButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+                buttonsPanel.Controls.Add(_titlesTextButton);
 
-                button.Click += UltraPasteCommon.SubtitlesTitlesAndTextToProTypeTitler;
+                _titlesTextButton.Click += UltraPasteCommon.SubtitlesTitlesAndTextToProTypeTitler;
             }
 
             Label spacer = new Label();
             Controls.Add(spacer);
             SetColumnSpan(spacer, 4);
+
+            I18n.LanguageChanged += (o, e) => RefreshLocalization();
+        }
+
+        private void RefreshLocalization()
+        {
+            Name = I18n.Translation.SubtitlesImport;
+            _mediaGeneratorLabel.Text = I18n.Translation.TextMediaGenerator;
+            _presetLabel.Text = I18n.Translation.TextMediaGeneratorPresetName;
+            _maxCharactersLabel.Text = I18n.Translation.SubtitlesMaxCharacters;
+            _maxLinesLabel.Text = I18n.Translation.SubtitlesMaxLines;
+            _defaultLengthLabel.Text = I18n.Translation.SubtitlesDefaultLength;
+            _addTextMediaGeneratorsCheckBox.Text = I18n.Translation.AddTextMediaGenerators;
+            _addRegionsCheckBox.Text = I18n.Translation.AddRegions;
+            _ignoreWordCheckBox.Text = I18n.Translation.SubtitlesIgnoreWord;
+            _multipleTracksCheckBox.Text = I18n.Translation.SubtitlesMultipleTracks;
+            _closeGapCheckBox.Text = I18n.Translation.CloseGap;
+            if (_applyButton != null)
+            {
+                _applyButton.Text = I18n.Translation.SubtitlesApplyToSelectedEvents;
+            }
+            if (_titlesTextButton != null)
+            {
+                _titlesTextButton.Text = I18n.Translation.SubtitlesTitlesAndTextToProTypeTitler.Replace("&", "&&");
+            }
         }
     }
 }

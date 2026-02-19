@@ -4,6 +4,7 @@ using ScriptPortal.Vegas;
 using Sony.Vegas;
 #endif
 
+using System;
 using System.Drawing;
 using System.Diagnostics;
 using System.Windows.Forms;
@@ -11,24 +12,28 @@ using System.Collections.Generic;
 
 namespace UltraPaste.UI.Controls.Panels
 {
-    using UltraPaste.Core;
-    using UltraPaste.Localization;
     using UltraPaste.Models;
+    using UltraPaste.Localization;
 
-    internal partial class UltraTableLayoutPanel_General : UltraPaste.UI.Controls.UltraTableLayoutPanel
+    internal partial class UltraTableLayoutPanel_General : UltraTableLayoutPanel
     {
+        private Label _languageLabel;
+        private Label _excludedFilesLabel;
+        private Button _supportButton;
+        private Button _updateButton;
+
         public UltraTableLayoutPanel_General(UltraPasteSettings.GeneralSettings settings, ContainerControl formControl, bool addOneClickGroup = true) : base()
         {
             Name = I18n.Translation.General;
 
-            Label label = new Label
+            _languageLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.Language,
                 AutoSize = true
             };
-            Controls.Add(label);
-            SetColumnSpan(label, 2);
+            Controls.Add(_languageLabel);
+            SetColumnSpan(_languageLabel, 2);
 
             ComboBox combo = new ComboBox
             {
@@ -38,19 +43,20 @@ namespace UltraPaste.UI.Controls.Panels
                 ValueMember = "Key",
                 DisplayMember = "Value",
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill,
+                Tag = "LanguageCombo"
             };
             Controls.Add(combo);
             SetColumnSpan(combo, 2);
 
-            label = new Label
+            _excludedFilesLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.ExcludedFiles,
                 AutoSize = true
             };
-            Controls.Add(label);
-            SetColumnSpan(label, 2);
+            Controls.Add(_excludedFilesLabel);
+            SetColumnSpan(_excludedFilesLabel, 2);
 
             TextBox excludedFiles = new TextBox
             {
@@ -101,19 +107,6 @@ namespace UltraPaste.UI.Controls.Panels
                     I18n.Settings.Current = key;
                     I18n.SaveSettingsToXml();
                     I18n.Localize();
-
-                    if (MessageBox.Show(I18n.Translation.LanguageChange, I18n.Translation.UltraPaste, MessageBoxButtons.OKCancel) == DialogResult.OK)
-                    {
-                        if (UltraPasteCommon.Vegas.FindDockView("UltraWindow_Main", out IDockView dock) && dock is DockableControl dockableControl)
-                        {
-                            dockableControl.Close();
-                        }
-
-                        if (UltraPasteCommon.Vegas.FindDockView("UltraWindow_SubtitlesInput", out dock) && dock is DockableControl subtitlesControl)
-                        {
-                            subtitlesControl.Close();
-                        }
-                    }
                 };
 
                 excludedFiles.TextChanged += (o, e) => { settings.ExcludedFiles = excludedFiles.Text; };
@@ -125,44 +118,72 @@ namespace UltraPaste.UI.Controls.Panels
                 Controls.Add(oneClickGroup);
                 SetColumnSpan(oneClickGroup, 4);
 
-                Button button = new Button
+                _supportButton = new Button
                 {
                     Text = I18n.Translation.SupportMe,
                     Margin = new Padding(3, 0, 3, 9),
                     TextAlign = ContentAlignment.MiddleCenter,
                     AutoSize = true,
                     FlatStyle = FlatStyle.Flat,
-                    Anchor = AnchorStyles.None
+                    Anchor = AnchorStyles.None,
+                    Tag = "SupportButton"
                 };
-                button.FlatAppearance.BorderSize = 1;
-                button.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-                buttonsPanel.Controls.Add(button);
+                _supportButton.FlatAppearance.BorderSize = 1;
+                _supportButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+                buttonsPanel.Controls.Add(_supportButton);
 
-                button.Click += (o, e) =>
+                _supportButton.Click += (o, e) =>
                 {
                     string link = I18n.Translation.Language == "zh" ? "https://afdian.com/a/zzzzzz9125" : "https://ko-fi.com/zzzzzz9125";
                     Process.Start(link);
                 };
 
-                button = new Button
+                _updateButton = new Button
                 {
                     Text = I18n.Translation.CheckForUpdate,
                     Margin = new Padding(3, 0, 3, 9),
                     TextAlign = ContentAlignment.MiddleCenter,
                     AutoSize = true,
                     FlatStyle = FlatStyle.Flat,
-                    Anchor = AnchorStyles.None
+                    Anchor = AnchorStyles.None,
+                    Tag = "UpdateButton"
                 };
-                button.FlatAppearance.BorderSize = 1;
-                button.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-                buttonsPanel.Controls.Add(button);
+                _updateButton.FlatAppearance.BorderSize = 1;
+                _updateButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+                buttonsPanel.Controls.Add(_updateButton);
 
-                button.Click += (o, e) => { Process.Start("https://github.com/zzzzzz9125/UltraPaste"); };
+                _updateButton.Click += (o, e) => { Process.Start("https://github.com/zzzzzz9125/UltraPaste"); };
             }
 
             Label spacer = new Label();
             Controls.Add(spacer);
             SetColumnSpan(spacer, 4);
+
+            I18n.LanguageChanged += (o, e) => RefreshLocalization();
+        }
+
+        private void RefreshLocalization()
+        {
+            SuspendLayout();
+            try
+            {
+                Name = I18n.Translation.General;
+                _languageLabel.Text = I18n.Translation.Language;
+                _excludedFilesLabel.Text = I18n.Translation.ExcludedFiles;
+                if (_supportButton != null)
+                {
+                    _supportButton.Text = I18n.Translation.SupportMe;
+                }
+                if (_updateButton != null)
+                {
+                    _updateButton.Text = I18n.Translation.CheckForUpdate;
+                }
+            }
+            finally
+            {
+                ResumeLayout(true);
+                PerformLayout();
+            }
         }
     }
 }

@@ -4,25 +4,35 @@ using System.Windows.Forms;
 namespace UltraPaste.UI.Controls.Panels
 {
     using UltraPaste.Core;
-    using UltraPaste.Localization;
     using UltraPaste.Models;
     using UltraPaste.Utilities;
+    using UltraPaste.Localization;
 
-    internal partial class UltraTableLayoutPanel_MediaImport : UltraPaste.UI.Controls.UltraTableLayoutPanel
+    internal partial class UltraTableLayoutPanel_MediaImport : UltraTableLayoutPanel
     {
+        private Label _addLabel;
+        private Label _streamLabel;
+        private Label _eventLengthLabel;
+        private CheckBox _imageSequenceCheckBox;
+        private Button _addMissingStreamsButton;
+        private Button _customButton;
+        private ComboBox _addCombo;
+        private ComboBox _streamCombo;
+        private ComboBox _eventLengthCombo;
+
         public UltraTableLayoutPanel_MediaImport(UltraPasteSettings.MediaImportSettings settings, ContainerControl formControl, bool addOneClickGroup = true) : base(settings, formControl)
         {
             Name = I18n.Translation.MediaImport;
 
-            Label label = new Label
+            _addLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.MediaImportAdd,
                 AutoSize = true
             };
-            Controls.Add(label);
+            Controls.Add(_addLabel);
 
-            ComboBox addCombo = new ComboBox
+            _addCombo = new ComboBox
             {
                 AutoSize = true,
                 Margin = new Padding(9, 6, 11, 6),
@@ -30,17 +40,17 @@ namespace UltraPaste.UI.Controls.Panels
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Dock = DockStyle.Fill
             };
-            Controls.Add(addCombo);
+            Controls.Add(_addCombo);
 
-            label = new Label
+            _streamLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.MediaImportStream,
                 AutoSize = true
             };
-            Controls.Add(label);
+            Controls.Add(_streamLabel);
 
-            ComboBox streamCombo = new ComboBox
+            _streamCombo = new ComboBox
             {
                 AutoSize = true,
                 Margin = new Padding(9, 6, 11, 6),
@@ -48,17 +58,17 @@ namespace UltraPaste.UI.Controls.Panels
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Dock = DockStyle.Fill
             };
-            Controls.Add(streamCombo);
+            Controls.Add(_streamCombo);
 
-            label = new Label
+            _eventLengthLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.MediaImportEventLength,
                 AutoSize = true
             };
-            Controls.Add(label);
+            Controls.Add(_eventLengthLabel);
 
-            ComboBox eventLengthCombo = new ComboBox
+            _eventLengthCombo = new ComboBox
             {
                 AutoSize = true,
                 Margin = new Padding(9, 6, 11, 6),
@@ -66,17 +76,17 @@ namespace UltraPaste.UI.Controls.Panels
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Dock = DockStyle.Fill
             };
-            Controls.Add(eventLengthCombo);
+            Controls.Add(_eventLengthCombo);
 
-            CheckBox imageSequence = new CheckBox
+            _imageSequenceCheckBox = new CheckBox
             {
                 Text = I18n.Translation.MediaImportImageSequence,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.ImageSequence ?? true
             };
-            Controls.Add(imageSequence);
-            SetColumnSpan(imageSequence, 2);
+            Controls.Add(_imageSequenceCheckBox);
+            SetColumnSpan(_imageSequenceCheckBox, 2);
 
             if (settings != null)
             {
@@ -84,25 +94,25 @@ namespace UltraPaste.UI.Controls.Panels
                 {
                     form.Load += (o, e) =>
                     {
-                        addCombo.SelectedIndex = settings.AddType;
-                        streamCombo.SelectedIndex = settings.StreamType;
-                        eventLengthCombo.SelectedIndex = settings.EventLengthType;
+                        _addCombo.SelectedIndex = settings.AddType;
+                        _streamCombo.SelectedIndex = settings.StreamType;
+                        _eventLengthCombo.SelectedIndex = settings.EventLengthType;
                     };
                 }
                 else if (formControl is UserControl uc)
                 {
                     uc.Load += (o, e) =>
                     {
-                        addCombo.SelectedIndex = settings.AddType;
-                        streamCombo.SelectedIndex = settings.StreamType;
-                        eventLengthCombo.SelectedIndex = settings.EventLengthType;
+                        _addCombo.SelectedIndex = settings.AddType;
+                        _streamCombo.SelectedIndex = settings.StreamType;
+                        _eventLengthCombo.SelectedIndex = settings.EventLengthType;
                     };
                 }
 
-                addCombo.SelectedIndexChanged += (o, e) => { settings.AddType = addCombo.SelectedIndex; };
-                streamCombo.SelectedIndexChanged += (o, e) => { settings.StreamType = streamCombo.SelectedIndex; };
-                eventLengthCombo.SelectedIndexChanged += (o, e) => { settings.EventLengthType = eventLengthCombo.SelectedIndex; };
-                imageSequence.CheckedChanged += (o, e) => { settings.ImageSequence = imageSequence.Checked; };
+                _addCombo.SelectedIndexChanged += (o, e) => { settings.AddType = _addCombo.SelectedIndex; };
+                _streamCombo.SelectedIndexChanged += (o, e) => { settings.StreamType = _streamCombo.SelectedIndex; };
+                _eventLengthCombo.SelectedIndexChanged += (o, e) => { settings.EventLengthType = _eventLengthCombo.SelectedIndex; };
+                _imageSequenceCheckBox.CheckedChanged += (o, e) => { settings.ImageSequence = _imageSequenceCheckBox.Checked; };
             }
 
             if (addOneClickGroup)
@@ -111,7 +121,7 @@ namespace UltraPaste.UI.Controls.Panels
                 Controls.Add(oneClickGroup);
                 SetColumnSpan(oneClickGroup, 4);
 
-                Button button = new Button
+                _addMissingStreamsButton = new Button
                 {
                     Text = I18n.Translation.AddMissingStreams,
                     Margin = new Padding(3, 0, 3, 9),
@@ -120,13 +130,13 @@ namespace UltraPaste.UI.Controls.Panels
                     FlatStyle = FlatStyle.Flat,
                     Anchor = AnchorStyles.None
                 };
-                button.FlatAppearance.BorderSize = 1;
-                button.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-                buttonsPanel.Controls.Add(button);
+                _addMissingStreamsButton.FlatAppearance.BorderSize = 1;
+                _addMissingStreamsButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+                buttonsPanel.Controls.Add(_addMissingStreamsButton);
 
-                button.Click += UltraPasteCommon.MediaAddMissingStreams;
+                _addMissingStreamsButton.Click += UltraPasteCommon.MediaAddMissingStreams;
 
-                button = new Button
+                _customButton = new Button
                 {
                     Text = I18n.Translation.MediaImportCustom,
                     Margin = new Padding(3, 0, 3, 9),
@@ -135,16 +145,70 @@ namespace UltraPaste.UI.Controls.Panels
                     FlatStyle = FlatStyle.Flat,
                     Anchor = AnchorStyles.None
                 };
-                button.FlatAppearance.BorderSize = 1;
-                button.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-                buttonsPanel.Controls.Add(button);
+                _customButton.FlatAppearance.BorderSize = 1;
+                _customButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+                buttonsPanel.Controls.Add(_customButton);
 
-                button.Click += (o, e) => ShowCustomMediaImportDialog(settings);
+                _customButton.Click += (o, e) => ShowCustomMediaImportDialog(settings);
             }
 
             Label spacer = new Label();
             Controls.Add(spacer);
             SetColumnSpan(spacer, 4);
+
+            I18n.LanguageChanged += (o, e) => RefreshLocalization();
+        }
+
+        private void RefreshLocalization()
+        {
+            SuspendLayout();
+            try
+            {
+                Name = I18n.Translation.MediaImport;
+                _addLabel.Text = I18n.Translation.MediaImportAdd;
+                _streamLabel.Text = I18n.Translation.MediaImportStream;
+                _eventLengthLabel.Text = I18n.Translation.MediaImportEventLength;
+                _imageSequenceCheckBox.Text = I18n.Translation.MediaImportImageSequence;
+                if (_addMissingStreamsButton != null)
+                {
+                    _addMissingStreamsButton.Text = I18n.Translation.AddMissingStreams;
+                }
+                if (_customButton != null)
+                {
+                    _customButton.Text = I18n.Translation.MediaImportCustom;
+                }
+
+                int savedAddIndex = _addCombo.SelectedIndex;
+                int savedStreamIndex = _streamCombo.SelectedIndex;
+                int savedEventLengthIndex = _eventLengthCombo.SelectedIndex;
+
+                _addCombo.DataSource = null;
+                _addCombo.DataSource = I18n.Translation.MediaImportAddType.Clone();
+                if (savedAddIndex >= 0 && savedAddIndex < _addCombo.Items.Count)
+                {
+                    _addCombo.SelectedIndex = savedAddIndex;
+                }
+
+                _streamCombo.DataSource = null;
+                _streamCombo.DataSource = I18n.Translation.MediaImportStreamType.Clone();
+                if (savedStreamIndex >= 0 && savedStreamIndex < _streamCombo.Items.Count)
+                {
+                    _streamCombo.SelectedIndex = savedStreamIndex;
+                }
+
+                _eventLengthCombo.DataSource = null;
+                _eventLengthCombo.DataSource = I18n.Translation.MediaImportEventLengthType.Clone();
+                if (savedEventLengthIndex >= 0 && savedEventLengthIndex < _eventLengthCombo.Items.Count)
+                {
+                    _eventLengthCombo.SelectedIndex = savedEventLengthIndex;
+                }
+            }
+            finally
+            {
+                ResumeLayout(true);
+                PerformLayout();
+                RefreshLayoutAfterLocalization();
+            }
         }
 
         private static void ShowCustomMediaImportDialog(UltraPasteSettings.MediaImportSettings settings)

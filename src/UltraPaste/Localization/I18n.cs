@@ -1,6 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Reflection;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Threading;
 
 namespace UltraPaste.Localization
 {
@@ -9,10 +12,12 @@ namespace UltraPaste.Localization
 
     public static class I18n
     {
+        public static event EventHandler LanguageChanged;
+
         public static TranslationSettings Settings { get; private set; }
         public class TranslationSettings
         {
-            public string Current = System.Globalization.CultureInfo.CurrentCulture.Name;
+            public string Current = CultureInfo.CurrentCulture.Name;
             public string LastUpdatedVersion = UltraPasteCommon.VERSION;
             public List<TranslationLanguage> Languages { get { return languages; } }
             private readonly List<TranslationLanguage> languages = new List<TranslationLanguage>();
@@ -258,7 +263,7 @@ namespace UltraPaste.Localization
                 Settings.Languages.Add(tran);
                 SaveSettingsToXml();
             }
-            string language = Settings.Current ?? System.Globalization.CultureInfo.CurrentCulture.Name;
+            string language = Settings.Current ?? CultureInfo.CurrentCulture.Name;
 
             bool success = false;
 
@@ -267,6 +272,7 @@ namespace UltraPaste.Localization
                 if (lang.Name == language)
                 {
                     Translation = lang.Translation;
+                    SetCurrentUICulture(lang.Name);
                     success = true;
                     break;
                 }
@@ -275,11 +281,27 @@ namespace UltraPaste.Localization
             if (!success)
             {
                 Translation = Settings.Languages[0].Translation;
+                SetCurrentUICulture(Settings.Languages[0].Name);
             }
             LanguageDictionary = new Dictionary<string, string>();
             foreach (TranslationLanguage lang in Settings.Languages)
             {
                 LanguageDictionary.Add(lang.Name, lang.DisplayName);
+            }
+
+            LanguageChanged?.Invoke(null, EventArgs.Empty);
+        }
+
+        private static void SetCurrentUICulture(string languageName)
+        {
+            try
+            {
+                CultureInfo culture = new CultureInfo(languageName);
+                Thread.CurrentThread.CurrentUICulture = culture;
+            }
+            catch
+            {
+                // Fallback to default if language code is invalid
             }
         }
 

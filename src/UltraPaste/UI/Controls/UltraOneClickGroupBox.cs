@@ -2,8 +2,8 @@
 
 namespace UltraPaste.UI.Controls
 {
-    using UltraPaste.Localization;
     using UltraPaste.Utilities;
+    using UltraPaste.Localization;
 
     internal class UltraOneClickGroupBox : GroupBox
     {
@@ -27,6 +27,13 @@ namespace UltraPaste.UI.Controls
             oneClickPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
             Controls.Add(oneClickPanel);
+
+            I18n.LanguageChanged += (o, e) => RefreshLocalization();
+        }
+
+        private void RefreshLocalization()
+        {
+            Text = I18n.Translation.OneClick;
         }
     }
 }

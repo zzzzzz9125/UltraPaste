@@ -6,25 +6,28 @@ using UltraPaste.Models;
 
 namespace UltraPaste.UI.Controls.Panels
 {
-    internal partial class UltraTableLayoutPanel_PsdImport : UltraPaste.UI.Controls.UltraTableLayoutPanel
+    internal partial class UltraTableLayoutPanel_PsdImport : UltraTableLayoutPanel
     {
+        private CheckBox _expandAllLayersCheckBox;
+        private Button _addOtherLayersButton;
+
         public UltraTableLayoutPanel_PsdImport(UltraPasteSettings.PsdImportSettings settings, ContainerControl formControl, bool addOneClickGroup = true) : base(settings, formControl)
         {
             Name = I18n.Translation.PsdImport;
 
-            CheckBox expandAllLayers = new CheckBox
+            _expandAllLayersCheckBox = new CheckBox
             {
                 Text = I18n.Translation.ExpandAllLayers,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.ExpandAllLayers ?? true
             };
-            Controls.Add(expandAllLayers);
-            SetColumnSpan(expandAllLayers, 2);
+            Controls.Add(_expandAllLayersCheckBox);
+            SetColumnSpan(_expandAllLayersCheckBox, 2);
 
             if (settings != null)
             {
-                expandAllLayers.CheckedChanged += (o, e) => { settings.ExpandAllLayers = expandAllLayers.Checked; };
+                _expandAllLayersCheckBox.CheckedChanged += (o, e) => { settings.ExpandAllLayers = _expandAllLayersCheckBox.Checked; };
             }
 
             if (addOneClickGroup)
@@ -33,7 +36,7 @@ namespace UltraPaste.UI.Controls.Panels
                 Controls.Add(oneClickGroup);
                 SetColumnSpan(oneClickGroup, 4);
 
-                Button button = new Button
+                _addOtherLayersButton = new Button
                 {
                     Text = I18n.Translation.PsdAddOtherLayers,
                     Margin = new Padding(3, 0, 3, 9),
@@ -42,17 +45,29 @@ namespace UltraPaste.UI.Controls.Panels
                     FlatStyle = FlatStyle.Flat,
                     Anchor = AnchorStyles.None
                 };
-                button.FlatAppearance.BorderSize = 1;
-                button.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-                buttonsPanel.Controls.Add(button);
-                buttonsPanel.SetColumnSpan(button, 2);
+                _addOtherLayersButton.FlatAppearance.BorderSize = 1;
+                _addOtherLayersButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+                buttonsPanel.Controls.Add(_addOtherLayersButton);
+                buttonsPanel.SetColumnSpan(_addOtherLayersButton, 2);
 
-                button.Click += UltraPasteCommon.PsdAddOtherLayers;
+                _addOtherLayersButton.Click += UltraPasteCommon.PsdAddOtherLayers;
             }
 
             Label spacer = new Label();
             Controls.Add(spacer);
             SetColumnSpan(spacer, 4);
+
+            I18n.LanguageChanged += (o, e) => RefreshLocalization();
+        }
+
+        private void RefreshLocalization()
+        {
+            Name = I18n.Translation.PsdImport;
+            _expandAllLayersCheckBox.Text = I18n.Translation.ExpandAllLayers;
+            if (_addOtherLayersButton != null)
+            {
+                _addOtherLayersButton.Text = I18n.Translation.PsdAddOtherLayers;
+            }
         }
     }
 }

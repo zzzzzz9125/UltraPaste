@@ -17,9 +17,11 @@ namespace UltraPaste.UI.Controls.Panels
     using UltraPaste.Localization;
     using UltraPaste.Models;
 
-    internal partial class UltraTableLayoutPanel_CapCutData : UltraPaste.UI.Controls.UltraTableLayoutPanel
+    internal partial class UltraTableLayoutPanel_CapCutData : UltraTableLayoutPanel
     {
         private readonly ComboBox _draftCombo;
+        private CheckBox _closeGapCheckBox;
+        private CheckBox _subtitlesOnlyCheckBox;
 
         private sealed class DraftItem
         {
@@ -46,30 +48,30 @@ namespace UltraPaste.UI.Controls.Panels
         {
             Name = I18n.Translation.CapCutData;
 
-            CheckBox closeGap = new CheckBox
+            _closeGapCheckBox = new CheckBox
             {
                 Text = I18n.Translation.CloseGap,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.CloseGap ?? true
             };
-            Controls.Add(closeGap);
-            SetColumnSpan(closeGap, 2);
+            Controls.Add(_closeGapCheckBox);
+            SetColumnSpan(_closeGapCheckBox, 2);
 
-            CheckBox subtitlesOnly = new CheckBox
+            _subtitlesOnlyCheckBox = new CheckBox
             {
                 Text = I18n.Translation.SubtitlesOnly,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.SubtitlesOnly ?? true
             };
-            Controls.Add(subtitlesOnly);
-            SetColumnSpan(subtitlesOnly, 2);
+            Controls.Add(_subtitlesOnlyCheckBox);
+            SetColumnSpan(_subtitlesOnlyCheckBox, 2);
 
             if (settings != null)
             {
-                closeGap.CheckedChanged += (o, e) => { settings.CloseGap = closeGap.Checked; };
-                subtitlesOnly.CheckedChanged += (o, e) => { settings.SubtitlesOnly = subtitlesOnly.Checked; };
+                _closeGapCheckBox.CheckedChanged += (o, e) => { settings.CloseGap = _closeGapCheckBox.Checked; };
+                _subtitlesOnlyCheckBox.CheckedChanged += (o, e) => { settings.SubtitlesOnly = _subtitlesOnlyCheckBox.Checked; };
             }
 
             _draftCombo = new ComboBox
@@ -142,6 +144,16 @@ namespace UltraPaste.UI.Controls.Panels
             Label spacer = new Label();
             Controls.Add(spacer);
             SetColumnSpan(spacer, 4);
+
+            I18n.LanguageChanged += (o, e) => RefreshLocalization();
+        }
+
+        private void RefreshLocalization()
+        {
+            Name = I18n.Translation.CapCutData;
+            _closeGapCheckBox.Text = I18n.Translation.CloseGap;
+            _subtitlesOnlyCheckBox.Text = I18n.Translation.SubtitlesOnly;
+            RefreshDraftList();
         }
 
         private void RefreshDraftList()

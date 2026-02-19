@@ -130,8 +130,11 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Utilities\CapCutDataHelper.cs" />
+    <Compile Include="Utilities\CommonFormatHelper.cs" />
+    <Compile Include="Utilities\FormatCompatibilityHelper.cs" />
     <Compile Include="Utilities\MediaDownloadHelper.cs" />
     <Compile Include="Utilities\PlugInHelper.cs" />
+    <Compile Include="Utilities\ProjectFormatHelper.cs" />
     <Compile Include="Utilities\TrackEventHelper.cs" />
     <Compile Include="Models\VegasClipData.cs" />
     <Compile Include="Utilities\VegasClipDataHelper.cs" />

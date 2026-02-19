@@ -18,6 +18,14 @@ namespace UltraPaste.UI.Controls.Panels
 
     internal partial class UltraTableLayoutPanel_SubtitlesInput : UltraPaste.UI.Controls.UltraTableLayoutPanel
     {
+        private Label _maxCharactersLabel;
+        private Label _maxLinesLabel;
+        private CheckBox _ignoreWordCheckBox;
+        private CheckBox _multipleTracksCheckBox;
+        private CheckBox _useUniversalCheckBox;
+        private Button _applySplitButton;
+        private Button _addToTimelineButton;
+
         public UltraTableLayoutPanel_SubtitlesInput(UltraPasteSettings.SubtitlesImportSettings settings) : base()
         {
             Name = I18n.Translation.SubtitlesInputBox;
@@ -43,13 +51,13 @@ namespace UltraPaste.UI.Controls.Panels
             Controls.Add(currentText);
             SetColumnSpan(currentText, 4);
 
-            Label label = new Label
+            _maxCharactersLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.SubtitlesMaxCharacters,
                 AutoSize = true
             };
-            Controls.Add(label);
+            Controls.Add(_maxCharactersLabel);
 
             TextBox maxCharactersTextBox = new TextBox
             {
@@ -60,23 +68,23 @@ namespace UltraPaste.UI.Controls.Panels
             };
             Controls.Add(maxCharactersTextBox);
 
-            CheckBox ignoreWord = new CheckBox
+            _ignoreWordCheckBox = new CheckBox
             {
                 Text = I18n.Translation.SubtitlesIgnoreWord,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.InputBoxIgnoreWord ?? false
             };
-            Controls.Add(ignoreWord);
-            SetColumnSpan(ignoreWord, 2);
+            Controls.Add(_ignoreWordCheckBox);
+            SetColumnSpan(_ignoreWordCheckBox, 2);
 
-            label = new Label
+            _maxLinesLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.SubtitlesMaxLines,
                 AutoSize = true
             };
-            Controls.Add(label);
+            Controls.Add(_maxLinesLabel);
 
             TextBox maxLinesTextBox = new TextBox
             {
@@ -87,25 +95,25 @@ namespace UltraPaste.UI.Controls.Panels
             };
             Controls.Add(maxLinesTextBox);
 
-            CheckBox multipleTracks = new CheckBox
+            _multipleTracksCheckBox = new CheckBox
             {
                 Text = I18n.Translation.SubtitlesMultipleTracks,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.InputBoxMultipleTracks ?? false
             };
-            Controls.Add(multipleTracks);
+            Controls.Add(_multipleTracksCheckBox);
 
-            CheckBox useUniversal = new CheckBox
+            _useUniversalCheckBox = new CheckBox
             {
                 Text = I18n.Translation.SubtitlesInputBoxUseUniversal,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.InputBoxUseUniversal ?? true
             };
-            Controls.Add(useUniversal);
+            Controls.Add(_useUniversalCheckBox);
 
-            Button applySplitButton = new Button
+            _applySplitButton = new Button
             {
                 Text = I18n.Translation.SubtitlesInputBoxApplyTextSplitting,
                 Margin = new Padding(3, 0, 3, 9),
@@ -114,12 +122,12 @@ namespace UltraPaste.UI.Controls.Panels
                 FlatStyle = FlatStyle.Flat,
                 Anchor = AnchorStyles.None
             };
-            applySplitButton.FlatAppearance.BorderSize = 1;
-            applySplitButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-            Controls.Add(applySplitButton);
-            SetColumnSpan(applySplitButton, 2);
+            _applySplitButton.FlatAppearance.BorderSize = 1;
+            _applySplitButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+            Controls.Add(_applySplitButton);
+            SetColumnSpan(_applySplitButton, 2);
 
-            Button addToTimelineButton = new Button
+            _addToTimelineButton = new Button
             {
                 Text = I18n.Translation.SubtitlesInputBoxAddToTimeline,
                 Margin = new Padding(3, 0, 3, 9),
@@ -128,10 +136,10 @@ namespace UltraPaste.UI.Controls.Panels
                 FlatStyle = FlatStyle.Flat,
                 Anchor = AnchorStyles.None
             };
-            addToTimelineButton.FlatAppearance.BorderSize = 1;
-            addToTimelineButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-            Controls.Add(addToTimelineButton);
-            SetColumnSpan(addToTimelineButton, 2);
+            _addToTimelineButton.FlatAppearance.BorderSize = 1;
+            _addToTimelineButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+            Controls.Add(_addToTimelineButton);
+            SetColumnSpan(_addToTimelineButton, 2);
 
             TextBox inputText = new TextBox
             {
@@ -163,7 +171,7 @@ namespace UltraPaste.UI.Controls.Panels
 
             if (settings != null)
             {
-                useUniversal.CheckedChanged += (o, e) => { settings.InputBoxUseUniversal = useUniversal.Checked; };
+                _useUniversalCheckBox.CheckedChanged += (o, e) => { settings.InputBoxUseUniversal = _useUniversalCheckBox.Checked; };
 
                 maxCharactersTextBox.TextChanged += (o, e) =>
                 {
@@ -175,9 +183,9 @@ namespace UltraPaste.UI.Controls.Panels
                 };
                 maxCharactersTextBox.MouseWheel += TextBox_MouseWheel_Int_Max_Zero;
 
-                ignoreWord.CheckedChanged += (o, e) =>
+                _ignoreWordCheckBox.CheckedChanged += (o, e) =>
                 {
-                    settings.InputBoxIgnoreWord = ignoreWord.Checked;
+                    settings.InputBoxIgnoreWord = _ignoreWordCheckBox.Checked;
                     UpdateSubtitlesPreview(settings, inputText, currentText);
                 };
 
@@ -191,13 +199,13 @@ namespace UltraPaste.UI.Controls.Panels
                 };
                 maxLinesTextBox.MouseWheel += TextBox_MouseWheel_Int_Max_Zero;
 
-                multipleTracks.CheckedChanged += (o, e) =>
+                _multipleTracksCheckBox.CheckedChanged += (o, e) =>
                 {
-                    settings.InputBoxMultipleTracks = multipleTracks.Checked;
+                    settings.InputBoxMultipleTracks = _multipleTracksCheckBox.Checked;
                     UpdateSubtitlesPreview(settings, inputText, currentText);
                 };
 
-                applySplitButton.Click += (o, e) =>
+                _applySplitButton.Click += (o, e) =>
                 {
                     if (UltraPasteCommon.InputBoxSubtitlesData?.Subtitles.Count > 0)
                     {
@@ -212,7 +220,7 @@ namespace UltraPaste.UI.Controls.Panels
                     }
                 };
 
-                addToTimelineButton.Click += (o, e) =>
+                _addToTimelineButton.Click += (o, e) =>
                 {
                     using (UndoBlock undo = new UndoBlock(UltraPasteCommon.Vegas.Project, I18n.Translation.SubtitlesInputBox))
                     {
@@ -222,6 +230,20 @@ namespace UltraPaste.UI.Controls.Panels
 
                 inputText.TextChanged += (o, e) => { UpdateSubtitlesPreview(settings, inputText, currentText); };
             }
+
+            I18n.LanguageChanged += (o, e) => RefreshLocalization();
+        }
+
+        private void RefreshLocalization()
+        {
+            Name = I18n.Translation.SubtitlesInputBox;
+            _maxCharactersLabel.Text = I18n.Translation.SubtitlesMaxCharacters;
+            _maxLinesLabel.Text = I18n.Translation.SubtitlesMaxLines;
+            _ignoreWordCheckBox.Text = I18n.Translation.SubtitlesIgnoreWord;
+            _multipleTracksCheckBox.Text = I18n.Translation.SubtitlesMultipleTracks;
+            _useUniversalCheckBox.Text = I18n.Translation.SubtitlesInputBoxUseUniversal;
+            _applySplitButton.Text = I18n.Translation.SubtitlesInputBoxApplyTextSplitting;
+            _addToTimelineButton.Text = I18n.Translation.SubtitlesInputBoxAddToTimeline;
         }
 
         private static void UpdateSubtitlesPreview(UltraPasteSettings.SubtitlesImportSettings settings, TextBox inputText, TextBox preview)

@@ -7,6 +7,9 @@ namespace UltraPaste.UI.Controls
 {
     internal partial class UltraTableLayoutPanel : TableLayoutPanel
     {
+        private Label _startPositionLabel;
+        private CheckBox _cursorToEndCheckBox;
+
         public UltraTableLayoutPanel()
         {
             Dock = DockStyle.Fill;
@@ -22,13 +25,13 @@ namespace UltraPaste.UI.Controls
 
         public UltraTableLayoutPanel(UltraPasteSettings.BaseImportSettings settings, ContainerControl formControl) : this()
         {
-            Label label = new Label
+            _startPositionLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.StartPosition,
                 AutoSize = true
             };
-            Controls.Add(label);
+            Controls.Add(_startPositionLabel);
 
             ComboBox combo = new ComboBox
             {
@@ -40,15 +43,15 @@ namespace UltraPaste.UI.Controls
             };
             Controls.Add(combo);
 
-            CheckBox cursorToEnd = new CheckBox
+            _cursorToEndCheckBox = new CheckBox
             {
                 Text = I18n.Translation.CursorToEnd,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.CursorToEnd ?? true
             };
-            Controls.Add(cursorToEnd);
-            SetColumnSpan(cursorToEnd, 2);
+            Controls.Add(_cursorToEndCheckBox);
+            SetColumnSpan(_cursorToEndCheckBox, 2);
 
             if (settings != null)
             {
@@ -62,8 +65,58 @@ namespace UltraPaste.UI.Controls
                 }
 
                 combo.SelectedIndexChanged += (o, e) => { settings.StartPositionType = combo.SelectedIndex; };
-                cursorToEnd.CheckedChanged += (o, e) => { settings.CursorToEnd = cursorToEnd.Checked; };
+                _cursorToEndCheckBox.CheckedChanged += (o, e) => { settings.CursorToEnd = _cursorToEndCheckBox.Checked; };
             }
+
+            I18n.LanguageChanged += (o, e) => RefreshBaseLocalization(combo);
+        }
+
+        protected void RefreshBaseLocalization(ComboBox combo)
+        {
+            SuspendLayout();
+            try
+            {
+                if (_startPositionLabel != null)
+                {
+                    _startPositionLabel.Text = I18n.Translation.StartPosition;
+                }
+                if (_cursorToEndCheckBox != null)
+                {
+                    _cursorToEndCheckBox.Text = I18n.Translation.CursorToEnd;
+                }
+
+                int savedIndex = combo.SelectedIndex;
+                combo.DataSource = null;
+                combo.DataSource = I18n.Translation.StartPositionType.Clone();
+                
+                if (savedIndex >= 0 && savedIndex < combo.Items.Count)
+                {
+                    combo.SelectedIndex = savedIndex;
+                }
+            }
+            finally
+            {
+                ResumeLayout(true);
+                PerformLayout();
+            }
+        }
+
+        /// <summary>
+        /// Helper method for derived classes to safely refresh layout after localization changes
+        /// </summary>
+        protected void RefreshLayoutAfterLocalization()
+        {
+            try
+            {
+                ResumeLayout(true);
+                PerformLayout();
+                
+                if (Parent is Control parentControl && parentControl is TableLayoutPanel parentPanel)
+                {
+                    parentPanel.PerformLayout();
+                }
+            }
+            catch { }
         }
 
         public static void TextBox_MouseWheel_Int_Max_Zero(object sender, MouseEventArgs e)

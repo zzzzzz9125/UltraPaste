@@ -21,6 +21,8 @@ namespace UltraPaste.UI.Windows
     internal sealed partial class UltraWindow_Main : DockableControl
     {
         public Vegas MyVegas;
+        private UltraTabControl _tabControl;
+        private TableLayoutPanel _mainPanel;
 
         public UltraWindow_Main()
             : base("UltraWindow_Main")
@@ -95,7 +97,7 @@ namespace UltraPaste.UI.Windows
             DisplayName = string.Format("{0} {1}", I18n.Translation.UltraPaste, UltraPasteCommon.VERSION);
             Font = new Font(I18n.Translation.Font, 9);
 
-            TableLayoutPanel l = new TableLayoutPanel
+            _mainPanel = new TableLayoutPanel
             {
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
@@ -103,39 +105,61 @@ namespace UltraPaste.UI.Windows
                 ColumnCount = 2,
                 Dock = DockStyle.Fill
             };
-            l.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            l.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            Controls.Add(l);
+            _mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            _mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            Controls.Add(_mainPanel);
 
-            UltraTabControl tab = new UltraTabControl();
-            l.Controls.Add(tab);
-            l.SetColumnSpan(tab, 2);
+            _tabControl = new UltraTabControl();
+            _mainPanel.Controls.Add(_tabControl);
+            _mainPanel.SetColumnSpan(_tabControl, 2);
             
-            tab.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_General(UltraPasteCommon.Settings.General, this)));
-            tab.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_ClipboardImage(UltraPasteCommon.Settings.ClipboardImage, this)));
-            tab.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_ReaperData(UltraPasteCommon.Settings.ReaperData, this)));
-            tab.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_CapCutData(UltraPasteCommon.Settings.CapCutData, this)));
-            tab.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_PsdImport(UltraPasteCommon.Settings.PsdImport, this)));
-            tab.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_SubtitlesImport(UltraPasteCommon.Settings.SubtitlesImport, this)));
-            tab.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_MediaImport(UltraPasteCommon.Settings.MediaImport, this, true)));
-            tab.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_VegasData(UltraPasteCommon.Settings.VegasData, this)));
+            _tabControl.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_General(UltraPasteCommon.Settings.General, this)));
+            _tabControl.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_ClipboardImage(UltraPasteCommon.Settings.ClipboardImage, this)));
+            _tabControl.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_ReaperData(UltraPasteCommon.Settings.ReaperData, this)));
+            _tabControl.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_CapCutData(UltraPasteCommon.Settings.CapCutData, this)));
+            _tabControl.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_PsdImport(UltraPasteCommon.Settings.PsdImport, this)));
+            _tabControl.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_SubtitlesImport(UltraPasteCommon.Settings.SubtitlesImport, this)));
+            _tabControl.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_MediaImport(UltraPasteCommon.Settings.MediaImport, this, true)));
+            _tabControl.TabPages.Add(new UltraTabPage(new UltraTableLayoutPanel_VegasData(UltraPasteCommon.Settings.VegasData, this)));
 
-            tab.SelectedIndex = UltraPasteCommon.Settings.General.LastTabIndex;
-            //tab.MinimumSize = new Size(500, 400);
+            _tabControl.SelectedIndex = UltraPasteCommon.Settings.General.LastTabIndex;
 
             Closed += (o, e) =>
             {
-                if (tab != null)
+                if (_tabControl != null)
                 {
-                    UltraPasteCommon.Settings.General.LastTabIndex = tab.SelectedIndex;
+                    UltraPasteCommon.Settings.General.LastTabIndex = _tabControl.SelectedIndex;
                 }
                 UltraPasteCommon.Settings.SaveToFile();
             };
 
             SetFocusToMainTrackViewForControlsMouseClick<Button>(this);
 
+            I18n.LanguageChanged += (o, e) => RefreshWindowLocalization();
+
             ResumeLayout(false);
             PerformLayout();
+        }
+
+        private void RefreshWindowLocalization()
+        {
+            BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    _mainPanel.SuspendLayout();
+                    
+                    DisplayName = string.Format("{0} {1}", I18n.Translation.UltraPaste, UltraPasteCommon.VERSION);
+                    Font = new Font(I18n.Translation.Font, 9);
+                    
+                    _mainPanel.ResumeLayout(true);
+                    _mainPanel.PerformLayout();
+                    
+                    PerformLayout();
+                    Invalidate(true);
+                }
+                catch { }
+            }));
         }
 
         void SetFocusToMainTrackViewForControlsMouseClick<T>(Control ctrl) where T : Control

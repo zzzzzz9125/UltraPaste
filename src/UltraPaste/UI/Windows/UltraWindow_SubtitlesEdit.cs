@@ -18,6 +18,7 @@ namespace UltraPaste.UI.Windows
     internal sealed partial class UltraWindow_SubtitlesEdit : DockableControl
     {
         public Vegas MyVegas;
+        private Control _contentPanel;
 
         public UltraWindow_SubtitlesEdit()
             : base("UltraWindow_SubtitlesEdit")
@@ -76,11 +77,34 @@ namespace UltraPaste.UI.Windows
 
             Font = new Font(I18n.Translation.Font, 9);
 
-            TableLayoutPanel l = new UltraTableLayoutPanel_SubtitlesEdit();
-            Controls.Add(l);
+            _contentPanel = new UltraTableLayoutPanel_SubtitlesEdit();
+            Controls.Add(_contentPanel);
+
+            I18n.LanguageChanged += (o, e) => RefreshWindowLocalization();
 
             ResumeLayout(false);
             PerformLayout();
+        }
+
+        private void RefreshWindowLocalization()
+        {
+            BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    _contentPanel.SuspendLayout();
+                    
+                    DisplayName = string.Format("{0} - {1}", I18n.Translation.UltraPaste, I18n.Translation.SubtitlesEditBox);
+                    Font = new Font(I18n.Translation.Font, 9);
+                    
+                    _contentPanel.ResumeLayout(true);
+                    _contentPanel.PerformLayout();
+                    
+                    PerformLayout();
+                    Invalidate(true);
+                }
+                catch { }
+            }));
         }
     }
 }

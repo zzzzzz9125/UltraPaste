@@ -6,36 +6,41 @@ using UltraPaste.Models;
 
 namespace UltraPaste.UI.Controls.Panels
 {
-    internal partial class UltraTableLayoutPanel_ReaperData : UltraPaste.UI.Controls.UltraTableLayoutPanel
+    internal partial class UltraTableLayoutPanel_ReaperData : UltraTableLayoutPanel
     {
+        private CheckBox _closeGapCheckBox;
+        private CheckBox _addVideoStreamsCheckBox;
+        private Button _exportEventsButton;
+        private Button _exportTracksButton;
+
         public UltraTableLayoutPanel_ReaperData(UltraPasteSettings.ReaperDataSettings settings, ContainerControl formControl, bool addOneClickGroup = true) : base(settings, formControl)
         {
             Name = I18n.Translation.ReaperData;
 
-            CheckBox closeGap = new CheckBox
+            _closeGapCheckBox = new CheckBox
             {
                 Text = I18n.Translation.CloseGap,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.CloseGap ?? true
             };
-            Controls.Add(closeGap);
-            SetColumnSpan(closeGap, 2);
+            Controls.Add(_closeGapCheckBox);
+            SetColumnSpan(_closeGapCheckBox, 2);
 
-            CheckBox addVideoStreams = new CheckBox
+            _addVideoStreamsCheckBox = new CheckBox
             {
                 Text = I18n.Translation.AddVideoStreams,
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = settings?.AddVideoStreams ?? true
             };
-            Controls.Add(addVideoStreams);
-            SetColumnSpan(addVideoStreams, 2);
+            Controls.Add(_addVideoStreamsCheckBox);
+            SetColumnSpan(_addVideoStreamsCheckBox, 2);
 
             if (settings != null)
             {
-                closeGap.CheckedChanged += (o, e) => { settings.CloseGap = closeGap.Checked; };
-                addVideoStreams.CheckedChanged += (o, e) => { settings.AddVideoStreams = addVideoStreams.Checked; };
+                _closeGapCheckBox.CheckedChanged += (o, e) => { settings.CloseGap = _closeGapCheckBox.Checked; };
+                _addVideoStreamsCheckBox.CheckedChanged += (o, e) => { settings.AddVideoStreams = _addVideoStreamsCheckBox.Checked; };
             }
 
             if (addOneClickGroup)
@@ -44,7 +49,7 @@ namespace UltraPaste.UI.Controls.Panels
                 Controls.Add(oneClickGroup);
                 SetColumnSpan(oneClickGroup, 4);
 
-                Button button = new Button
+                _exportEventsButton = new Button
                 {
                     Text = I18n.Translation.ExportSelectedEventsToReaperData,
                     Margin = new Padding(3, 0, 3, 9),
@@ -53,13 +58,13 @@ namespace UltraPaste.UI.Controls.Panels
                     FlatStyle = FlatStyle.Flat,
                     Anchor = AnchorStyles.None
                 };
-                button.FlatAppearance.BorderSize = 1;
-                button.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-                buttonsPanel.Controls.Add(button);
+                _exportEventsButton.FlatAppearance.BorderSize = 1;
+                _exportEventsButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+                buttonsPanel.Controls.Add(_exportEventsButton);
 
-                button.Click += UltraPasteCommon.ExportSelectedEventsToReaperData;
+                _exportEventsButton.Click += UltraPasteCommon.ExportSelectedEventsToReaperData;
 
-                button = new Button
+                _exportTracksButton = new Button
                 {
                     Text = I18n.Translation.ExportSelectedTracksToReaperData,
                     Margin = new Padding(3, 0, 3, 9),
@@ -68,16 +73,33 @@ namespace UltraPaste.UI.Controls.Panels
                     FlatStyle = FlatStyle.Flat,
                     Anchor = AnchorStyles.None
                 };
-                button.FlatAppearance.BorderSize = 1;
-                button.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-                buttonsPanel.Controls.Add(button);
+                _exportTracksButton.FlatAppearance.BorderSize = 1;
+                _exportTracksButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+                buttonsPanel.Controls.Add(_exportTracksButton);
 
-                button.Click += UltraPasteCommon.ExportSelectedTracksToReaperData;
+                _exportTracksButton.Click += UltraPasteCommon.ExportSelectedTracksToReaperData;
             }
 
             Label spacer = new Label();
             Controls.Add(spacer);
             SetColumnSpan(spacer, 4);
+
+            I18n.LanguageChanged += (o, e) => RefreshLocalization();
+        }
+
+        private void RefreshLocalization()
+        {
+            Name = I18n.Translation.ReaperData;
+            _closeGapCheckBox.Text = I18n.Translation.CloseGap;
+            _addVideoStreamsCheckBox.Text = I18n.Translation.AddVideoStreams;
+            if (_exportEventsButton != null)
+            {
+                _exportEventsButton.Text = I18n.Translation.ExportSelectedEventsToReaperData;
+            }
+            if (_exportTracksButton != null)
+            {
+                _exportTracksButton.Text = I18n.Translation.ExportSelectedTracksToReaperData;
+            }
         }
     }
 }

@@ -12,11 +12,16 @@ using System.Collections.Generic;
 namespace UltraPaste.UI.Controls.Panels
 {
     using UltraPaste.Core;
-    using UltraPaste.Localization;
     using UltraPaste.Utilities;
+    using UltraPaste.Localization;
 
-    internal partial class UltraTableLayoutPanel_SubtitlesEdit : UltraPaste.UI.Controls.UltraTableLayoutPanel
+    internal partial class UltraTableLayoutPanel_SubtitlesEdit : UltraTableLayoutPanel
     {
+        private Label _colorLabel;
+        private Button _colorButton;
+        private Button _applyButton;
+        private CheckBox _autoApplyCheckBox;
+
         public UltraTableLayoutPanel_SubtitlesEdit() : base()
         {
             Name = I18n.Translation.SubtitlesEditBox;
@@ -132,16 +137,16 @@ namespace UltraPaste.UI.Controls.Panels
                 line2Panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / line2Panel.ColumnCount));
             }
 
-            Label colorLabel = new Label
+            _colorLabel = new Label
             {
                 Margin = new Padding(6, 9, 0, 6),
                 Text = I18n.Translation.TextColor,
                 AutoSize = true,
                 Dock = DockStyle.Fill
             };
-            line2Panel.Controls.Add(colorLabel);
+            line2Panel.Controls.Add(_colorLabel);
 
-            Button colorButton = new Button
+            _colorButton = new Button
             {
                 Text = I18n.Translation.ChooseColor,
                 Margin = new Padding(9, 6, 11, 6),
@@ -150,21 +155,21 @@ namespace UltraPaste.UI.Controls.Panels
                 FlatStyle = FlatStyle.Flat,
                 Dock = DockStyle.Fill
             };
-            colorButton.FlatAppearance.BorderSize = 1;
-            colorButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-            line2Panel.Controls.Add(colorButton);
+            _colorButton.FlatAppearance.BorderSize = 1;
+            _colorButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+            line2Panel.Controls.Add(_colorButton);
 
             ColorDialog colorDialog = new ColorDialog();
-            colorButton.Click += (o, e) =>
+            _colorButton.Click += (o, e) =>
             {
                 if (colorDialog.ShowDialog() == DialogResult.OK)
                 {
-                    colorButton.BackColor = colorDialog.Color;
-                    colorButton.ForeColor = colorDialog.Color.GetBrightness() < 0.5f ? Color.White : Color.Black;
+                    _colorButton.BackColor = colorDialog.Color;
+                    _colorButton.ForeColor = colorDialog.Color.GetBrightness() < 0.5f ? Color.White : Color.Black;
                 }
             };
 
-            Button applyButton = new Button
+            _applyButton = new Button
             {
                 Text = "Apply",
                 Margin = new Padding(6, 6, 6, 6),
@@ -173,19 +178,19 @@ namespace UltraPaste.UI.Controls.Panels
                 FlatStyle = FlatStyle.Flat,
                 Dock = DockStyle.Fill
             };
-            applyButton.FlatAppearance.BorderSize = 1;
-            applyButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
-            toolTip.SetToolTip(applyButton, "Apply");
-            line2Panel.Controls.Add(applyButton);
+            _applyButton.FlatAppearance.BorderSize = 1;
+            _applyButton.FlatAppearance.BorderColor = Color.FromArgb(127, 127, 127);
+            toolTip.SetToolTip(_applyButton, "Apply");
+            line2Panel.Controls.Add(_applyButton);
 
-            CheckBox autoApplyCheckBox = new CheckBox
+            _autoApplyCheckBox = new CheckBox
             {
                 Text = "Auto Apply",
                 Margin = new Padding(6, 8, 6, 6),
                 AutoSize = true,
                 Checked = true
             };
-            line2Panel.Controls.Add(autoApplyCheckBox);
+            line2Panel.Controls.Add(_autoApplyCheckBox);
 
             Controls.Add(line2Panel);
             SetColumnSpan(line2Panel, 4);
@@ -266,7 +271,7 @@ namespace UltraPaste.UI.Controls.Panels
                 applySelectionChange();
             };
 
-            applyButton.Click += (o, e) =>
+            _applyButton.Click += (o, e) =>
             {
                 using (UndoBlock undo = new UndoBlock(UltraPasteCommon.Vegas.Project, "SubtitlesEdit"))
                 {
@@ -332,7 +337,7 @@ namespace UltraPaste.UI.Controls.Panels
             {
                 //updateControlsFromEditor();
 
-                if (autoApplyCheckBox.Checked && (bool)editor.Tag)
+                if (_autoApplyCheckBox.Checked && (bool)editor.Tag)
                 {
                     List<VideoEvent> evs = UltraPasteCommon.Vegas.Project.GetSelectedEvents<VideoEvent>();
 
@@ -353,27 +358,26 @@ namespace UltraPaste.UI.Controls.Panels
                 }
             };
 
-            //UltraPasteCommon.Vegas.TrackEventStateChanged += (o, e) =>
-            //{
-            //    if (autoApplyCheckBox != null && editor != null && autoApplyCheckBox.Checked)
-            //    {
-            //        List<VideoEvent> selectedEvents = UltraPasteCommon.Vegas.Project.GetSelectedEvents<VideoEvent>();
-            //        if (selectedEvents.Count > 0)
-            //        {
-            //            List<string> strs = TextMediaGeneratorHelper.GetRichTextFromEvent(selectedEvents);
-            //            if (strs.Count > 0)
-            //            {
-            //                if (editor.Rtf != strs[0])
-            //                {
-            //                    editor.Tag = false;
-            //                    editor.Rtf = strs[0];
-            //                    updateControlsFromEditor();
-            //                    editor.Tag = true;
-            //                }
-            //            }
-            //        }
-            //    }x
-            //};
+            I18n.LanguageChanged += (o, e) => RefreshLocalization(alignmentCombo, toolTip, boldButton, italicButton);
+        }
+
+        private void RefreshLocalization(ComboBox alignmentCombo, ToolTip toolTip, Button boldButton, Button italicButton)
+        {
+            Name = I18n.Translation.SubtitlesEditBox;
+            _colorLabel.Text = I18n.Translation.TextColor;
+            _colorButton.Text = I18n.Translation.ChooseColor;
+            toolTip.SetToolTip(boldButton, I18n.Translation.FontBold);
+            toolTip.SetToolTip(italicButton, I18n.Translation.FontItalic);
+            
+            alignmentCombo.BeginUpdate();
+            alignmentCombo.Items.Clear();
+            alignmentCombo.Items.AddRange(new object[]
+            {
+                I18n.Translation.TextAlignmentLeft,
+                I18n.Translation.TextAlignmentCenter,
+                I18n.Translation.TextAlignmentRight
+            });
+            alignmentCombo.EndUpdate();
         }
     }
 }
