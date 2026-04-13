@@ -139,16 +139,10 @@ namespace UltraPaste.UI.Controls.Panels
                 {
                     try
                     {
-                        Timecode length = null;
-                        if (UltraPasteCommon.Vegas.Transport.SelectionLength.Nanos != 0)
+                        Timecode length = UltraPasteCommon.Vegas.Transport.SelectionLength.Nanos != 0 ? UltraPasteCommon.Vegas.Transport.SelectionLength : null;
+                        if (length?.Nanos < 0)
                         {
-                            length = UltraPasteCommon.Vegas.Transport.SelectionLength;
-                            Timecode start = UltraPasteCommon.Vegas.Transport.SelectionStart;
-                            if (UltraPasteCommon.Vegas.Transport.SelectionLength.Nanos < 0)
-                            {
-                                start += UltraPasteCommon.Vegas.Transport.SelectionLength;
-                                UltraPasteCommon.Vegas.RefreshCursorPosition(start);
-                            }
+                            UltraPasteCommon.Vegas.RefreshCursorPosition(UltraPasteCommon.Vegas.Transport.SelectionStart + length);
                         }
                         VegasClipDataHelper.ApplyFxPackageToClipboard(sel, length);
                         if (length == null && UltraPasteCommon.Vegas.Project.HasSelectedEventsInRange<VideoEvent>(1))

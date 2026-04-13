@@ -7,5 +7,12 @@
         public double StartPos { get; set; }
         public double Overlap { get; set; }
         public ReaperSource Source { get; set; }
+
+        public ReaperSourceSection() : base()
+        {
+            Type = "SECTION";
+            Overlap = 0.01;
+            Source = new ReaperSource();
+        }
     }
 }

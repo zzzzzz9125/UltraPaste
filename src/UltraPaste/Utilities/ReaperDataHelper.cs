@@ -46,6 +46,7 @@ namespace UltraPaste.Utilities
             {
                 int fadeInType = ev.FadeIn.Curve == CurveType.Fast ? 1 : ev.FadeIn.Curve == CurveType.Slow ? 2 : ev.FadeIn.Curve == CurveType.Smooth ? 5 : ev.FadeIn.Curve == CurveType.Sharp ? 6 : 0;
                 int fadeOutType = ev.FadeOut.Curve == CurveType.Slow ? 1 : ev.FadeIn.Curve == CurveType.Fast ? 2 : ev.FadeIn.Curve == CurveType.Smooth ? 5 : ev.FadeIn.Curve == CurveType.Sharp ? 6 : 0;
+
                 ReaperItem item = new ReaperItem()
                 {
                     Position = ev.Start.ToMilliseconds() / 1000,
@@ -134,36 +135,61 @@ namespace UltraPaste.Utilities
                 {
                     currentTake.Name = tk.Name;
                     currentTake.SOffs = tk.Offset.ToMilliseconds() / 1000 * ev.PlaybackRate;
-                    if (!File.Exists(tk.MediaPath))
+
+                    ReaperSource source = currentTake.Source;
+
+                    Media media = tk.Media;
+
+                    if (media == null)
                     {
                         continue;
                     }
-                    if (tk.Media.HasVideo())
+
+                    if (media.IsSubclip())
                     {
-                        currentTake.Source.Type = "VIDEO";
+                        Subclip sc = media as Subclip;
+                        media = sc.ParentMedia;
+                        ReaperSourceSection section = new ReaperSourceSection()
+                        {
+                            StartPos = sc.Start.ToMilliseconds() / 1000,
+                            Length = sc.Length.ToMilliseconds() / 1000,
+                            Mode = sc.IsReversed ? 3 : 0
+                        };
+                        currentTake.Source = section;
+                        source = section.Source;
+                    }
+
+                    if (!File.Exists(media.FilePath))
+                    {
+                        continue;
+                    }
+
+                    if (media.HasVideo())
+                    {
+                        source.Type = "VIDEO";
                     }
                     else
                     {
-                        switch (Path.GetExtension(tk.MediaPath).ToLowerInvariant())
+                        switch (Path.GetExtension(media.FilePath).ToLowerInvariant())
                         {
                             case ".wav":
-                                currentTake.Source.Type = "WAVE";
+                                source.Type = "WAVE";
                                 break;
 
                             case ".mp3":
-                                currentTake.Source.Type = "MP3";
+                                source.Type = "MP3";
                                 break;
 
                             case ".flac":
-                                currentTake.Source.Type = "FLAC";
+                                source.Type = "FLAC";
                                 break;
 
                             default:
-                                currentTake.Source.Type = "VIDEO";
+                                source.Type = "VIDEO";
                                 break;
                         }
                     }
-                    currentTake.Source.FilePath = tk.MediaPath;
+                    source.FilePath = media.FilePath;
                     if (currentTake != item)
                     {
                         currentTake.ChanMode = item.ChanMode;

@@ -1,3 +1,9 @@
+﻿#if !Sony
+using ScriptPortal.Vegas;
+#else
+using Sony.Vegas;
+#endif
+
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -118,7 +124,7 @@ namespace UltraPaste.Utilities
         /// <returns>Exported content as string. If outputPath is provided, also saves to file.</returns>
         /// <exception cref="ArgumentNullException">Thrown when required parameters are null.</exception>
         /// <exception cref="NotSupportedException">Thrown for unsupported formats.</exception>
-        public static string ExportProject(ScriptPortal.Vegas.Project project, SupportedFormat format, string outputPath = null)
+        public static string ExportProject(Project project, SupportedFormat format, string outputPath = null)
         {
             if (project == null)
                 throw new ArgumentNullException(nameof(project), "Project cannot be null.");
@@ -168,7 +174,7 @@ namespace UltraPaste.Utilities
         /// <param name="isFilePath">If true, contentOrPath is treated as a file path; otherwise as content.</param>
         /// <exception cref="ArgumentNullException">Thrown when required parameters are null.</exception>
         /// <exception cref="NotSupportedException">Thrown for unsupported formats.</exception>
-        public static void ImportProject(ScriptPortal.Vegas.Project project, SupportedFormat format, string contentOrPath, bool isFilePath = false)
+        public static void ImportProject(Project project, SupportedFormat format, string contentOrPath, bool isFilePath = false)
         {
             if (project == null)
                 throw new ArgumentNullException(nameof(project), "Project cannot be null.");
@@ -219,7 +225,7 @@ namespace UltraPaste.Utilities
         /// <param name="targetFormat">The target format.</param>
         /// <param name="outputPath">Optional file path to save the converted file.</param>
         /// <returns>Converted content in target format.</returns>
-        public static string ConvertFormat(ScriptPortal.Vegas.Project sourceProject, SupportedFormat sourceFormat, 
+        public static string ConvertFormat(Project sourceProject, SupportedFormat sourceFormat, 
             SupportedFormat targetFormat, string outputPath = null)
         {
             if (sourceProject == null)

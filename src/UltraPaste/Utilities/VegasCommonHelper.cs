@@ -34,7 +34,7 @@ namespace UltraPaste.Utilities
 #if !Sony
         public static System.Drawing.Color[] UIColors = new System.Drawing.Color[] { ScriptPortal.MediaSoftware.Skins.Skins.Colors.ButtonFace, ScriptPortal.MediaSoftware.Skins.Skins.Colors.ButtonText };
 #else
-    public static System.Drawing.Color[] UIColors = new System.Drawing.Color[] { Sony.MediaSoftware.Skins.Skins.Colors.ButtonFace, Sony.MediaSoftware.Skins.Skins.Colors.ButtonText };
+        public static System.Drawing.Color[] UIColors = new System.Drawing.Color[] { Sony.MediaSoftware.Skins.Skins.Colors.ButtonFace, Sony.MediaSoftware.Skins.Skins.Colors.ButtonText };
 #endif
 
         [DllImport("shell32.dll", ExactSpelling = true)]

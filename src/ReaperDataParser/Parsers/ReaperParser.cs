@@ -867,12 +867,35 @@ namespace ReaperDataParser.Parsers
             AddPropertyTokens(tokens, "SOFFS", t.SOffs);
             AddPropertyTokens(tokens, "PLAYRATE", t.PlayRate);
             AddPropertyTokens(tokens, "CHANMODE", t.ChanMode);
-            if (t.Source != null)
+            CollectSourceTokens(t.Source, tokens);
+            return tokens;
+        }
+
+        private static List<byte[]> CollectSourceTokens<T>(T t, List<byte[]> tokens = null) where T : ReaperSource
+        {
+            if (tokens == null)
             {
-                AddPropertyTokens(tokens, "<SOURCE", t.Source.Type);
-                AddPropertyTokens(tokens, "FILE", t.Source.FilePath, true);
-                tokens.Add(Encoding.UTF8.GetBytes(">"));
+                tokens = new List<byte[]>();
             }
+            if (t == null)
+            {
+                return tokens;
+            }
+
+            AddPropertyTokens(tokens, "<SOURCE", t.Type);
+            if (t is ReaperSourceSection section)
+            {
+                AddPropertyTokens(tokens, "LENGTH", section.Length);
+                AddPropertyTokens(tokens, "MODE", section.Mode);
+                AddPropertyTokens(tokens, "STARTPOS", section.StartPos);
+                AddPropertyTokens(tokens, "OVERLAP", section.Overlap);
+                CollectSourceTokens(section.Source, tokens);
+            }
+            else
+            {
+                AddPropertyTokens(tokens, "FILE", t.FilePath, true);
+            }
+            tokens.Add(Encoding.UTF8.GetBytes(">"));
             return tokens;
         }
 
